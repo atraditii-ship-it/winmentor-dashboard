@@ -99,7 +99,7 @@
     <!-- NAV -->
     <div class="nav">
         <div class="nav-item active" onclick="showSection('overview')">Prezentare Generala</div>
-        <div class="nav-item" onclick="showSection('monetar')">Monetar Magazin</div>
+        <div class="nav-item" onclick="showSection('monetar')">Cabinet de curiozitati</div>
         <div class="nav-item" onclick="showSection('stocuri')">Stocuri</div>
         <div class="nav-item" onclick="showSection('vanzari')">Vanzari Detaliate</div>
         <div class="nav-item" onclick="showSection('scadentar')">Scadentar</div>
@@ -109,6 +109,10 @@
 
         <!-- OVERVIEW SECTION -->
         <div id="overview" class="section active">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+                <span style="font-size:13px;font-weight:500;color:#6b7280;">Perioada:</span>
+                <select id="ovPeriod" class="tbl-filter" onchange="renderOverview()" style="min-width:160px;"></select>
+            </div>
             <div class="kpi-row" id="overviewKpis"></div>
             <div class="chart-row">
                 <div class="chart-box">
@@ -116,7 +120,7 @@
                     <canvas id="chartCA"></canvas>
                 </div>
                 <div class="chart-box">
-                    <h3>Monetar Magazin - Vanzari Zilnice (RON)</h3>
+                    <h3>Cabinet de curiozitati - Vanzari Zilnice (RON)</h3>
                     <canvas id="chartMonetar"></canvas>
                 </div>
             </div>
@@ -282,62 +286,124 @@
     }
 
     // =========== OVERVIEW ===========
+    var ovCharts = {};
+
+    function populateOvPeriod() {
+        var sel = document.getElementById('ovPeriod');
+        if (sel.options.length > 0) return;
+        var bl = WINMENTOR_DATA.balanta_lunara || [];
+        var m = WINMENTOR_DATA.meta || {};
+        // Luna curenta default
+        var curLuna = m.luna || new Date().getMonth() + 1;
+        // Tot anul
+        var opt = document.createElement('option');
+        opt.value = 'all';
+        opt.textContent = 'Tot anul ' + (m.an || 2026);
+        sel.appendChild(opt);
+        // Lunile disponibile
+        bl.forEach(function(b) {
+            var o = document.createElement('option');
+            o.value = b.luna;
+            o.textContent = luniNume[b.luna] || ('Luna ' + b.luna);
+            sel.appendChild(o);
+        });
+        // Default = luna curenta
+        sel.value = String(curLuna);
+    }
+
     function renderOverview() {
         var D = WINMENTOR_DATA;
         var bl = D.balanta_lunara || [];
-        var lastBl = bl.length > 0 ? bl[bl.length-1] : {};
-        var prevBl = bl.length > 1 ? bl[bl.length-2] : {};
-        var caLuna = lastBl.cifra_afaceri || 0;
-        var caTotal = lastBl.cifra_afaceri_cumulat || 0;
-        var caPrev = prevBl.cifra_afaceri || 0;
-        var caChange = caPrev > 0 ? ((caLuna - caPrev) / caPrev * 100).toFixed(1) : 0;
+        var sel = document.getElementById('ovPeriod');
+        var period = sel.value || 'all';
+        var isAll = period === 'all';
+        var selLuna = isAll ? 0 : parseInt(period);
 
-        var stocPF=0, stocMP=0, stocAmb=0;
-        (D.stoc||[]).forEach(function(s){
-            var t=(s.tip||'').toLowerCase();
-            if(t==='produse finite'||t==='marfuri') stocPF+=s.valoare||0;
-            else if(t==='materii prime') stocMP+=s.valoare||0;
-            else if(t==='ambalaje') stocAmb+=s.valoare||0;
+        // CA
+        var caVal = 0, caPrevVal = 0, caLabel = '';
+        if (isAll) {
+            var lastBl = bl.length > 0 ? bl[bl.length - 1] : {};
+            caVal = lastBl.cifra_afaceri_cumulat || 0;
+            caLabel = 'Tot anul';
+        } else {
+            bl.forEach(function(b) { if (b.luna === selLuna) caVal = b.cifra_afaceri || 0; });
+            bl.forEach(function(b) { if (b.luna === selLuna - 1) caPrevVal = b.cifra_afaceri || 0; });
+            caLabel = luniNume[selLuna] || '';
+        }
+        var caChange = caPrevVal > 0 ? ((caVal - caPrevVal) / caPrevVal * 100).toFixed(1) : 0;
+
+        // Monetar (doar luna curenta - datele sunt doar din luna curenta)
+        var curLuna = (D.meta || {}).luna || 3;
+        var totalMonetar = 0, totalBonuri = 0;
+        if (isAll || selLuna === curLuna) {
+            (D.monetar_zile || []).forEach(function(z) { totalMonetar += z.valoare; totalBonuri += z.nrBonuri; });
+        }
+
+        // Stoc (snapshot curent, nu depinde de luna)
+        var stocPF = 0, stocMP = 0, stocAmb = 0;
+        (D.stoc || []).forEach(function(s) {
+            var t = (s.tip || '').toLowerCase();
+            if (t === 'produse finite' || t === 'marfuri') stocPF += s.valoare || 0;
+            else if (t === 'materii prime') stocMP += s.valoare || 0;
+            else if (t === 'ambalaje') stocAmb += s.valoare || 0;
         });
 
-        var totalMonetar=0, totalBonuri=0;
-        (D.monetar_zile||[]).forEach(function(z){totalMonetar+=z.valoare;totalBonuri+=z.nrBonuri;});
+        // Vanzari filtrate pe perioada
+        var an = (D.meta || {}).an || 2026;
+        var vanzFilt = (D.vanzari || []).filter(function(v) {
+            if (isAll) return true;
+            var parts = (v.data || '').split('-');
+            if (parts.length >= 2) return parseInt(parts[1]) === selLuna;
+            return false;
+        });
 
-        var totalRestante=0, nrRestante=0;
-        (D.scadentar_clienti||[]).forEach(function(s){totalRestante+=s.sold_ramas||0;nrRestante++;});
-
+        // KPIs
         var kh = '';
-        kh += '<div class="kpi accent"><div class="kpi-label">Cifra de Afaceri (luna)</div><div class="kpi-value">'+fmt(caLuna)+'</div><div class="kpi-sub">'+(caChange>0?'+':'')+caChange+'% vs luna ant.</div></div>';
-        kh += '<div class="kpi accent"><div class="kpi-label">CA Total An</div><div class="kpi-value">'+fmt(caTotal)+'</div><div class="kpi-sub">'+bl.length+' luni</div></div>';
-        kh += '<div class="kpi green"><div class="kpi-label">Monetar Magazin (luna)</div><div class="kpi-value">'+fmt(totalMonetar)+'</div><div class="kpi-sub">'+totalBonuri+' bonuri fiscale</div></div>';
-        kh += '<div class="kpi blue"><div class="kpi-label">Stoc Total</div><div class="kpi-value">'+fmt(stocPF+stocMP+stocAmb)+'</div><div class="kpi-sub">PF+Marfuri: '+fmt(stocPF)+'</div></div>';
+        kh += '<div class="kpi accent"><div class="kpi-label">Cifra de Afaceri (' + caLabel + ')</div><div class="kpi-value">' + fmt(caVal) + '</div>';
+        if (!isAll && caPrevVal > 0) kh += '<div class="kpi-sub">' + (caChange > 0 ? '+' : '') + caChange + '% vs luna ant.</div>';
+        kh += '</div>';
+        if (isAll) {
+            var lastBl2 = bl.length > 0 ? bl[bl.length - 1] : {};
+            kh += '<div class="kpi accent"><div class="kpi-label">CA Luna Curenta</div><div class="kpi-value">' + fmt(lastBl2.cifra_afaceri || 0) + '</div><div class="kpi-sub">' + luniNume[curLuna] + '</div></div>';
+        }
+        kh += '<div class="kpi green"><div class="kpi-label">Cabinet de curiozitati</div><div class="kpi-value">' + fmt(totalMonetar) + '</div><div class="kpi-sub">' + (totalBonuri > 0 ? totalBonuri + ' bonuri' : (isAll && selLuna !== curLuna ? 'date doar luna curenta' : '-')) + '</div></div>';
+        kh += '<div class="kpi blue"><div class="kpi-label">Stoc Total</div><div class="kpi-value">' + fmt(stocPF + stocMP + stocAmb) + '</div><div class="kpi-sub">PF+Marfuri: ' + fmt(stocPF) + '</div></div>';
         document.getElementById('overviewKpis').innerHTML = kh;
 
+        // Destroy old charts
+        Object.keys(ovCharts).forEach(function(k) { if (ovCharts[k]) { ovCharts[k].destroy(); ovCharts[k] = null; } });
+
         // Chart CA pe luni
-        var caLabels=[], caData=[];
-        bl.forEach(function(b){caLabels.push(luniNume[b.luna]||b.luna);caData.push(b.cifra_afaceri||0);});
-        new Chart(document.getElementById('chartCA'),{type:'bar',data:{labels:caLabels,datasets:[{label:'CA (RON)',data:caData,backgroundColor:'#e85d04',borderRadius:6}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{callback:function(v){return fmtN(v)}}}}}});
+        var caLabels = [], caData = [], caColors = [];
+        bl.forEach(function(b) {
+            caLabels.push(luniNume[b.luna] || b.luna);
+            caData.push(b.cifra_afaceri || 0);
+            caColors.push((!isAll && b.luna === selLuna) ? '#e85d04' : (isAll ? '#e85d04' : '#e4e7ec'));
+        });
+        ovCharts.ca = new Chart(document.getElementById('chartCA'), { type: 'bar', data: { labels: caLabels, datasets: [{ label: 'CA (RON)', data: caData, backgroundColor: caColors, borderRadius: 6 }] }, options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: function(v) { return fmtN(v) } } } } } });
 
         // Chart Monetar zilnic
-        var mzLabels=[], mzData=[];
-        (D.monetar_zile||[]).forEach(function(z){mzLabels.push('Zi '+z.zi);mzData.push(z.valoare);});
-        new Chart(document.getElementById('chartMonetar'),{type:'line',data:{labels:mzLabels,datasets:[{label:'Valoare (RON)',data:mzData,borderColor:'#22c55e',backgroundColor:'rgba(34,197,94,0.1)',fill:true,tension:0.3,pointRadius:3}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{callback:function(v){return fmtN(v)}}}}}});
+        var mzLabels = [], mzData = [];
+        if (isAll || selLuna === curLuna) {
+            (D.monetar_zile || []).forEach(function(z) { mzLabels.push('Zi ' + z.zi); mzData.push(z.valoare); });
+        }
+        ovCharts.monetar = new Chart(document.getElementById('chartMonetar'), { type: 'line', data: { labels: mzLabels, datasets: [{ label: 'Valoare (RON)', data: mzData, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', fill: true, tension: 0.3, pointRadius: 3 }] }, options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: function(v) { return fmtN(v) } } } } } });
 
-        // Top 10 produse
-        var prodMap={};
-        (D.vanzari||[]).forEach(function(v){
-            var a=v.articol||'?';
-            if(!prodMap[a])prodMap[a]={cant:0,val:0};
-            prodMap[a].cant+=v.cantitate||0;
-            prodMap[a].val+=v.valoare||0;
+        // Top 10 produse (filtrate pe perioada)
+        var prodMap = {};
+        vanzFilt.forEach(function(v) {
+            var a = v.articol || '?';
+            if (!prodMap[a]) prodMap[a] = { cant: 0, val: 0 };
+            prodMap[a].cant += v.cantitate || 0;
+            prodMap[a].val += v.valoare || 0;
         });
-        var topProd=Object.keys(prodMap).map(function(k){return{n:k,c:prodMap[k].cant}}).sort(function(a,b){return b.c-a.c}).slice(0,10);
-        var tpLabels=topProd.map(function(p){return p.n.length>30?p.n.substr(0,30)+'...':p.n});
-        var tpData=topProd.map(function(p){return p.c});
-        new Chart(document.getElementById('chartTopProduse'),{type:'bar',data:{labels:tpLabels,datasets:[{data:tpData,backgroundColor:'#3b82f6',borderRadius:4}]},options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false}},scales:{x:{beginAtZero:true}}}});
+        var topProd = Object.keys(prodMap).map(function(k) { return { n: k, c: prodMap[k].cant } }).sort(function(a, b) { return b.c - a.c }).slice(0, 10);
+        var tpLabels = topProd.map(function(p) { return p.n.length > 30 ? p.n.substr(0, 30) + '...' : p.n });
+        var tpData = topProd.map(function(p) { return p.c });
+        ovCharts.topProd = new Chart(document.getElementById('chartTopProduse'), { type: 'bar', data: { labels: tpLabels, datasets: [{ data: tpData, backgroundColor: '#3b82f6', borderRadius: 4 }] }, options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } } });
 
         // Stoc categorii donut
-        new Chart(document.getElementById('chartStocCateg'),{type:'doughnut',data:{labels:['Produse Finite + Marfuri','Materii Prime','Ambalaje'],datasets:[{data:[stocPF,stocMP,stocAmb],backgroundColor:['#e85d04','#3b82f6','#f59e0b'],borderWidth:0}]},options:{responsive:true,plugins:{legend:{position:'bottom',labels:{font:{size:11}}}}}});
+        ovCharts.stocCateg = new Chart(document.getElementById('chartStocCateg'), { type: 'doughnut', data: { labels: ['Produse Finite + Marfuri', 'Materii Prime', 'Ambalaje'], datasets: [{ data: [stocPF, stocMP, stocAmb], backgroundColor: ['#e85d04', '#3b82f6', '#f59e0b'], borderWidth: 0 }] }, options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } } } });
     }
 
     // =========== MONETAR ===========
@@ -539,6 +605,7 @@
         document.getElementById('vFrom').value=new Date(y,mo,1).toISOString().slice(0,10);
         document.getElementById('vTo').value=new Date(y,mo+1,0).toISOString().slice(0,10);
 
+        populateOvPeriod();
         renderOverview();
         renderMonetarSection();
         renderStocSection();

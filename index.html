@@ -132,6 +132,7 @@
                 <div class="chart-box">
                     <h3>Distributie Stoc pe Categorii (valoare)</h3>
                     <canvas id="chartStocCateg"></canvas>
+                    <div id="stocCategTotal" style="text-align:center;margin-top:8px;font-size:14px;color:#374151;"></div>
                 </div>
             </div>
         </div>
@@ -395,8 +396,8 @@
         ovCharts.topProd = new Chart(document.getElementById('chartTopProduse'), { type: 'bar', data: { labels: tpLabels, datasets: [{ data: tpData, backgroundColor: '#3b82f6', borderRadius: 4 }] }, options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } } });
 
         // Stoc categorii donut cu sume in legenda
-        var stocTotal=stocPF+stocMP+stocAmb;
-        ovCharts.stocCateg = new Chart(document.getElementById('chartStocCateg'), { type: 'doughnut', data: { labels: ['Produse Finite + Marfuri: ' + fmt(stocPF), 'Materii Prime: ' + fmt(stocMP), 'Ambalaje: ' + fmt(stocAmb)], datasets: [{ data: [stocPF, stocMP, stocAmb], backgroundColor: ['#e85d04', '#3b82f6', '#f59e0b'], borderWidth: 0 }] }, options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 12 }, padding: 16 } } } }, plugins:[{id:'centerTotal',beforeDraw:function(chart){var w=chart.width,h=chart.height,ctx=chart.ctx;ctx.restore();var fs=(h/10).toFixed(0);ctx.font='bold '+fs+'px Inter,sans-serif';ctx.textBaseline='middle';ctx.fillStyle='#374151';var txt='Total: '+fmt(stocTotal);var tx=(w-ctx.measureText(txt).width)/2;ctx.fillText(txt,tx,h/2);ctx.save();}}] });
+        ovCharts.stocCateg = new Chart(document.getElementById('chartStocCateg'), { type: 'doughnut', data: { labels: ['Produse Finite + Marfuri: ' + fmt(stocPF), 'Materii Prime: ' + fmt(stocMP), 'Ambalaje: ' + fmt(stocAmb)], datasets: [{ data: [stocPF, stocMP, stocAmb], backgroundColor: ['#e85d04', '#3b82f6', '#f59e0b'], borderWidth: 0 }] }, options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 12 }, padding: 16 } } } } });
+        document.getElementById('stocCategTotal').innerHTML='<strong>Total Stoc: '+fmt(stocPF+stocMP+stocAmb)+'</strong>';
     }
 
     // =========== MONETAR ===========
@@ -419,25 +420,27 @@
         var zile=WINMENTOR_DATA.monetar_zile||[];
         // Build per-day data for this product
         var dayMap={};
-        zile.forEach(function(z){dayMap[z.zi]={val:0,bon:0};});
+        zile.forEach(function(z){dayMap[z.zi]={val:0,bon:0,cant:0};});
         linii.forEach(function(l){
             if(l.denumire===denumire){
-                if(!dayMap[l.zi]) dayMap[l.zi]={val:0,bon:0};
+                if(!dayMap[l.zi]) dayMap[l.zi]={val:0,bon:0,cant:0};
                 dayMap[l.zi].val+=(l.valoare||0);
                 dayMap[l.zi].bon+=1;
+                dayMap[l.zi].cant+=Math.max(1,Math.round(l.cant||0));
             }
         });
         var days=Object.keys(dayMap).map(Number).sort(function(a,b){return a-b;});
-        var labels=[],vals=[],bons=[];
-        days.forEach(function(d){labels.push('Zi '+d);vals.push(dayMap[d].val);bons.push(dayMap[d].bon);});
+        var labels=[],vals=[],bons=[],cants=[];
+        days.forEach(function(d){labels.push('Zi '+d);vals.push(dayMap[d].val);bons.push(dayMap[d].bon);cants.push(dayMap[d].cant);});
         // Redraw charts
         if(chartMZ){chartMZ.destroy();}
         if(chartMB){chartMB.destroy();}
         var short=denumire.length>30?denumire.substring(0,30)+'...':denumire;
         document.getElementById('titleMonetarZile').innerHTML='Vanzari pe Zile: <span style="color:#e85d04">'+short+'</span> <button onclick="resetMonetarFilter()" style="font-size:11px;padding:2px 8px;margin-left:8px;border:1px solid #e4e7ec;border-radius:4px;background:#fff;cursor:pointer;font-family:Inter,sans-serif;">Arata toate</button>';
         document.getElementById('titleMonetarBonuri').innerHTML='Nr. Bonuri pe Zile: <span style="color:#3b82f6">'+short+'</span> <button onclick="resetMonetarFilter()" style="font-size:11px;padding:2px 8px;margin-left:8px;border:1px solid #e4e7ec;border-radius:4px;background:#fff;cursor:pointer;font-family:Inter,sans-serif;">Arata toate</button>';
-        chartMZ=new Chart(document.getElementById('chartMonetarZile'),{type:'bar',data:{labels:labels,datasets:[{label:'Valoare',data:vals,backgroundColor:'#e85d04',borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
-        chartMB=new Chart(document.getElementById('chartMonetarBonuri'),{type:'bar',data:{labels:labels,datasets:[{label:'Bonuri',data:bons,backgroundColor:'#3b82f6',borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+        var ttCant={callbacks:{afterLabel:function(ctx){return 'Cantitate: '+cants[ctx.dataIndex];}}};
+        chartMZ=new Chart(document.getElementById('chartMonetarZile'),{type:'bar',data:{labels:labels,datasets:[{label:'Valoare',data:vals,backgroundColor:'#e85d04',borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false},tooltip:ttCant},scales:{y:{beginAtZero:true}}}});
+        chartMB=new Chart(document.getElementById('chartMonetarBonuri'),{type:'bar',data:{labels:labels,datasets:[{label:'Bonuri',data:bons,backgroundColor:'#3b82f6',borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false},tooltip:ttCant},scales:{y:{beginAtZero:true}}}});
         renderMonetarTable();
     }
 

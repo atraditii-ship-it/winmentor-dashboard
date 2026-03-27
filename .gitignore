@@ -1,0 +1,8 @@
+*.ps1
+*.bat
+*.json
+diagnostic_*
+convert_*
+alocare_*
+desktop.ini
+Thumbs.db

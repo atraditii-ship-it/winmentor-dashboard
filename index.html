@@ -141,11 +141,11 @@
             <div class="kpi-row" id="monetarKpis"></div>
             <div class="chart-row">
                 <div class="chart-box">
-                    <h3>Vanzari pe Zile (RON)</h3>
+                    <h3 id="titleMonetarZile">Vanzari pe Zile (RON)</h3>
                     <canvas id="chartMonetarZile"></canvas>
                 </div>
                 <div class="chart-box">
-                    <h3>Nr. Bonuri pe Zile</h3>
+                    <h3 id="titleMonetarBonuri">Nr. Bonuri pe Zile</h3>
                     <canvas id="chartMonetarBonuri"></canvas>
                 </div>
             </div>
@@ -395,11 +395,13 @@
         ovCharts.topProd = new Chart(document.getElementById('chartTopProduse'), { type: 'bar', data: { labels: tpLabels, datasets: [{ data: tpData, backgroundColor: '#3b82f6', borderRadius: 4 }] }, options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } } });
 
         // Stoc categorii donut cu sume in legenda
-        ovCharts.stocCateg = new Chart(document.getElementById('chartStocCateg'), { type: 'doughnut', data: { labels: ['Produse Finite + Marfuri: ' + fmt(stocPF), 'Materii Prime: ' + fmt(stocMP), 'Ambalaje: ' + fmt(stocAmb)], datasets: [{ data: [stocPF, stocMP, stocAmb], backgroundColor: ['#e85d04', '#3b82f6', '#f59e0b'], borderWidth: 0 }] }, options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 12 }, padding: 16 } } } } });
+        var stocTotal=stocPF+stocMP+stocAmb;
+        ovCharts.stocCateg = new Chart(document.getElementById('chartStocCateg'), { type: 'doughnut', data: { labels: ['Produse Finite + Marfuri: ' + fmt(stocPF), 'Materii Prime: ' + fmt(stocMP), 'Ambalaje: ' + fmt(stocAmb)], datasets: [{ data: [stocPF, stocMP, stocAmb], backgroundColor: ['#e85d04', '#3b82f6', '#f59e0b'], borderWidth: 0 }] }, options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 12 }, padding: 16 } } } }, plugins:[{id:'centerTotal',beforeDraw:function(chart){var w=chart.width,h=chart.height,ctx=chart.ctx;ctx.restore();var fs=(h/10).toFixed(0);ctx.font='bold '+fs+'px Inter,sans-serif';ctx.textBaseline='middle';ctx.fillStyle='#374151';var txt='Total: '+fmt(stocTotal);var tx=(w-ctx.measureText(txt).width)/2;ctx.fillText(txt,tx,h/2);ctx.save();}}] });
     }
 
     // =========== MONETAR ===========
-    var mSort={col:2,asc:false}, mPage=0, mPS=50, mView='total';
+    var mSort={col:2,asc:false}, mPage=0, mPS=50, mView='total', mFilterProd=null;
+    var chartMZ=null, chartMB=null;
 
     function setMView(v) {
         mView=v; mSort=v==='total'?{col:2,asc:false}:{col:-1,asc:true}; mPage=0;
@@ -410,6 +412,48 @@
         renderMonetarTable();
     }
     function sortM(c){if(mSort.col===c)mSort.asc=!mSort.asc;else{mSort.col=c;mSort.asc=true;}mPage=0;renderMonetarTable();}
+
+    function filterMonetarCharts(denumire){
+        mFilterProd=denumire;
+        var linii=WINMENTOR_DATA.monetar_linii||[];
+        var zile=WINMENTOR_DATA.monetar_zile||[];
+        // Build per-day data for this product
+        var dayMap={};
+        zile.forEach(function(z){dayMap[z.zi]={val:0,bon:0};});
+        linii.forEach(function(l){
+            if(l.denumire===denumire){
+                if(!dayMap[l.zi]) dayMap[l.zi]={val:0,bon:0};
+                dayMap[l.zi].val+=(l.valoare||0);
+                dayMap[l.zi].bon+=1;
+            }
+        });
+        var days=Object.keys(dayMap).map(Number).sort(function(a,b){return a-b;});
+        var labels=[],vals=[],bons=[];
+        days.forEach(function(d){labels.push('Zi '+d);vals.push(dayMap[d].val);bons.push(dayMap[d].bon);});
+        // Redraw charts
+        if(chartMZ){chartMZ.destroy();}
+        if(chartMB){chartMB.destroy();}
+        var short=denumire.length>30?denumire.substring(0,30)+'...':denumire;
+        document.getElementById('titleMonetarZile').innerHTML='Vanzari pe Zile: <span style="color:#e85d04">'+short+'</span> <button onclick="resetMonetarFilter()" style="font-size:11px;padding:2px 8px;margin-left:8px;border:1px solid #e4e7ec;border-radius:4px;background:#fff;cursor:pointer;font-family:Inter,sans-serif;">Arata toate</button>';
+        document.getElementById('titleMonetarBonuri').innerHTML='Nr. Bonuri pe Zile: <span style="color:#3b82f6">'+short+'</span> <button onclick="resetMonetarFilter()" style="font-size:11px;padding:2px 8px;margin-left:8px;border:1px solid #e4e7ec;border-radius:4px;background:#fff;cursor:pointer;font-family:Inter,sans-serif;">Arata toate</button>';
+        chartMZ=new Chart(document.getElementById('chartMonetarZile'),{type:'bar',data:{labels:labels,datasets:[{label:'Valoare',data:vals,backgroundColor:'#e85d04',borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+        chartMB=new Chart(document.getElementById('chartMonetarBonuri'),{type:'bar',data:{labels:labels,datasets:[{label:'Bonuri',data:bons,backgroundColor:'#3b82f6',borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+        renderMonetarTable();
+    }
+
+    function resetMonetarFilter(){
+        mFilterProd=null;
+        var zile=WINMENTOR_DATA.monetar_zile||[];
+        var labels=[],vals=[],bons=[];
+        zile.forEach(function(z){labels.push('Zi '+z.zi);vals.push(z.valoare);bons.push(z.nrBonuri);});
+        if(chartMZ){chartMZ.destroy();}
+        if(chartMB){chartMB.destroy();}
+        document.getElementById('titleMonetarZile').textContent='Vanzari pe Zile (RON)';
+        document.getElementById('titleMonetarBonuri').textContent='Nr. Bonuri pe Zile';
+        chartMZ=new Chart(document.getElementById('chartMonetarZile'),{type:'bar',data:{labels:labels,datasets:[{label:'Valoare',data:vals,backgroundColor:'#e85d04',borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+        chartMB=new Chart(document.getElementById('chartMonetarBonuri'),{type:'bar',data:{labels:labels,datasets:[{label:'Bonuri',data:bons,backgroundColor:'#3b82f6',borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+        renderMonetarTable();
+    }
 
     function renderMonetarSection(){
         var D=WINMENTOR_DATA;
@@ -428,8 +472,8 @@
         // Charts
         var labels=[],vals=[],bons=[];
         zile.forEach(function(z){labels.push('Zi '+z.zi);vals.push(z.valoare);bons.push(z.nrBonuri);});
-        new Chart(document.getElementById('chartMonetarZile'),{type:'bar',data:{labels:labels,datasets:[{label:'Valoare',data:vals,backgroundColor:'#e85d04',borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
-        new Chart(document.getElementById('chartMonetarBonuri'),{type:'bar',data:{labels:labels,datasets:[{label:'Bonuri',data:bons,backgroundColor:'#3b82f6',borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+        chartMZ=new Chart(document.getElementById('chartMonetarZile'),{type:'bar',data:{labels:labels,datasets:[{label:'Valoare',data:vals,backgroundColor:'#e85d04',borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+        chartMB=new Chart(document.getElementById('chartMonetarBonuri'),{type:'bar',data:{labels:labels,datasets:[{label:'Bonuri',data:bons,backgroundColor:'#3b82f6',borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
 
         renderMonetarTable();
     }
@@ -459,7 +503,7 @@
             var tp=Math.ceil(f.length/mPS)||1;if(mPage>=tp)mPage=tp-1;
             var page=f.slice(mPage*mPS,(mPage+1)*mPS);
             var h='';
-            page.forEach(function(p){h+='<tr><td>'+p.denumire+'</td><td>'+p.um+'</td><td class="text-right">'+p.cant+'</td><td class="text-right">'+fmt(p.valoare)+'</td><td class="text-right">'+fmt(p.tva)+'</td></tr>';});
+            page.forEach(function(p){var sel=mFilterProd===p.denumire?' style="background:#fff3e0;cursor:pointer"':' style="cursor:pointer"';h+='<tr'+sel+' onclick="filterMonetarCharts(\''+p.denumire.replace(/'/g,"\\'")+'\')" title="Click pentru a filtra graficele"><td>'+p.denumire+'</td><td>'+p.um+'</td><td class="text-right">'+p.cant+'</td><td class="text-right">'+fmt(p.valoare)+'</td><td class="text-right">'+fmt(p.tva)+'</td></tr>';});
             document.getElementById('mBody').innerHTML=h;
             var sv=0,st=0;f.forEach(function(p){sv+=p.valoare;st+=p.tva;});
             foot.colSpan=5;
@@ -476,7 +520,7 @@
             var tp=Math.ceil(f.length/mPS)||1;if(mPage>=tp)mPage=tp-1;
             var page=f.slice(mPage*mPS,(mPage+1)*mPS);
             var h='';
-            page.forEach(function(l){h+='<tr><td class="text-center">'+l.zi+'</td><td>'+l.denumire+'</td><td>'+l.um+'</td><td class="text-right">'+Math.max(1,Math.round(l.cant))+'</td><td class="text-right">'+fmt(l.pret)+'</td><td class="text-right">'+fmt(l.valoare)+'</td><td class="text-right">'+fmt(l.tva)+'</td><td class="text-right">'+(l.procDiscount>0?l.procDiscount.toFixed(1)+'%':'-')+'</td></tr>';});
+            page.forEach(function(l){var sel=mFilterProd===l.denumire?' style="background:#fff3e0;cursor:pointer"':' style="cursor:pointer"';h+='<tr'+sel+' onclick="filterMonetarCharts(\''+l.denumire.replace(/'/g,"\\'")+'\')" title="Click pentru a filtra graficele"><td class="text-center">'+l.zi+'</td><td>'+l.denumire+'</td><td>'+l.um+'</td><td class="text-right">'+Math.max(1,Math.round(l.cant))+'</td><td class="text-right">'+fmt(l.pret)+'</td><td class="text-right">'+fmt(l.valoare)+'</td><td class="text-right">'+fmt(l.tva)+'</td><td class="text-right">'+(l.procDiscount>0?l.procDiscount.toFixed(1)+'%':'-')+'</td></tr>';});
             document.getElementById('mBody').innerHTML=h;
             var sv=0,st=0;f.forEach(function(l){sv+=l.valoare;st+=l.tva;});
             foot.colSpan=8;

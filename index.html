@@ -311,7 +311,6 @@
         kh += '<div class="kpi accent"><div class="kpi-label">CA Total An</div><div class="kpi-value">'+fmt(caTotal)+'</div><div class="kpi-sub">'+bl.length+' luni</div></div>';
         kh += '<div class="kpi green"><div class="kpi-label">Monetar Magazin (luna)</div><div class="kpi-value">'+fmt(totalMonetar)+'</div><div class="kpi-sub">'+totalBonuri+' bonuri fiscale</div></div>';
         kh += '<div class="kpi blue"><div class="kpi-label">Stoc Total</div><div class="kpi-value">'+fmt(stocPF+stocMP+stocAmb)+'</div><div class="kpi-sub">PF+Marfuri: '+fmt(stocPF)+'</div></div>';
-        kh += '<div class="kpi '+(totalRestante>0?'red':'green')+'"><div class="kpi-label">Restante Clienti</div><div class="kpi-value">'+fmt(totalRestante)+'</div><div class="kpi-sub">'+nrRestante+' facturi</div></div>';
         document.getElementById('overviewKpis').innerHTML = kh;
 
         // Chart CA pe luni

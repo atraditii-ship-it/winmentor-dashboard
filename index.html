@@ -151,27 +151,23 @@
             </div>
             <div class="tbl-box">
                 <div class="tbl-header">
-                    <h3>Produse Vandute la Magazin</h3>
+                    <h3>Produse Vandute la Magazin (total)</h3>
                     <div style="display:flex;gap:8px;align-items:center;">
-                        <select id="mZiFilter" class="tbl-filter" onchange="renderMonetarTable()"><option value="">Toate zilele</option></select>
                         <input type="text" id="mSearch" class="tbl-search" placeholder="Cauta produs..." oninput="renderMonetarTable()">
                     </div>
                 </div>
                 <table>
                     <thead>
                         <tr>
-                            <th class="text-center" onclick="sortM(0)">Zi</th>
-                            <th onclick="sortM(1)">Produs</th>
-                            <th onclick="sortM(2)">UM</th>
-                            <th class="text-right" onclick="sortM(3)">Cant</th>
-                            <th class="text-right" onclick="sortM(4)">Pret</th>
-                            <th class="text-right" onclick="sortM(5)">Valoare</th>
-                            <th class="text-right" onclick="sortM(6)">TVA</th>
-                            <th class="text-right" onclick="sortM(7)">Disc%</th>
+                            <th onclick="sortM(0)">Produs</th>
+                            <th onclick="sortM(1)">UM</th>
+                            <th class="text-right" onclick="sortM(2)">Cant Totala</th>
+                            <th class="text-right" onclick="sortM(3)">Valoare</th>
+                            <th class="text-right" onclick="sortM(4)">TVA</th>
                         </tr>
                     </thead>
                     <tbody id="mBody"></tbody>
-                    <tfoot><tr><td colspan="8" id="mFoot"></td></tr></tfoot>
+                    <tfoot><tr><td colspan="5" id="mFoot"></td></tr></tfoot>
                 </table>
                 <div class="pag" id="mPag"></div>
             </div>
@@ -424,10 +420,6 @@
         kh+='<div class="kpi accent"><div class="kpi-label">Medie / Zi</div><div class="kpi-value">'+fmt(zileLuc>0?totalVal/zileLuc:0)+'</div></div>';
         document.getElementById('monetarKpis').innerHTML=kh;
 
-        // Populate filter
-        var sel=document.getElementById('mZiFilter');
-        if(sel.options.length<=1){zile.forEach(function(z){var o=document.createElement('option');o.value=z.zi;o.textContent='Ziua '+z.zi+' (MS '+z.nrDoc+')';sel.appendChild(o);});}
-
         // Charts
         var labels=[],vals=[],bons=[];
         zile.forEach(function(z){labels.push('Zi '+z.zi);vals.push(z.valoare);bons.push(z.nrBonuri);});
@@ -439,20 +431,29 @@
 
     function renderMonetarTable(){
         var linii=WINMENTOR_DATA.monetar_linii||[];
-        var zi=document.getElementById('mZiFilter').value;
         var q=(document.getElementById('mSearch').value||'').toLowerCase();
-        var f=linii;
-        if(zi)f=f.filter(function(l){return String(l.zi)===zi;});
-        if(q)f=f.filter(function(l){return(l.denumire||'').toLowerCase().indexOf(q)!==-1;});
-        var cols=['zi','denumire','um','cant','pret','valoare','tva','procDiscount'];
-        var num={zi:1,cant:1,pret:1,valoare:1,tva:1,procDiscount:1};
+
+        // Agregam pe produs (denumire)
+        var prodMap={};
+        linii.forEach(function(l){
+            var key=l.denumire||'?';
+            if(!prodMap[key]) prodMap[key]={denumire:key,um:l.um||'',cant:0,valoare:0,tva:0};
+            prodMap[key].cant+=Math.max(1,Math.round(l.cant));
+            prodMap[key].valoare+=l.valoare||0;
+            prodMap[key].tva+=l.tva||0;
+        });
+        var f=Object.keys(prodMap).map(function(k){return prodMap[k];});
+        if(q) f=f.filter(function(p){return p.denumire.toLowerCase().indexOf(q)!==-1;});
+
+        var cols=['denumire','um','cant','valoare','tva'];
+        var num={cant:1,valoare:1,tva:1};
         if(mSort.col>=0){var sc=cols[mSort.col];f.sort(function(a,b){var va=a[sc],vb=b[sc];if(num[sc]){va=parseFloat(va)||0;vb=parseFloat(vb)||0;return mSort.asc?va-vb:vb-va;}va=String(va||'').toLowerCase();vb=String(vb||'').toLowerCase();return mSort.asc?va.localeCompare(vb,'ro'):vb.localeCompare(va,'ro');});}
         var tp=Math.ceil(f.length/mPS)||1;if(mPage>=tp)mPage=tp-1;
         var page=f.slice(mPage*mPS,(mPage+1)*mPS);
         var h='';
-        page.forEach(function(l){h+='<tr><td class="text-center">'+l.zi+'</td><td>'+l.denumire+'</td><td>'+l.um+'</td><td class="text-right">'+Math.max(1,Math.round(l.cant))+'</td><td class="text-right">'+fmt(l.pret)+'</td><td class="text-right">'+fmt(l.valoare)+'</td><td class="text-right">'+fmt(l.tva)+'</td><td class="text-right">'+(l.procDiscount>0?l.procDiscount.toFixed(1)+'%':'-')+'</td></tr>';});
+        page.forEach(function(p){h+='<tr><td>'+p.denumire+'</td><td>'+p.um+'</td><td class="text-right">'+p.cant+'</td><td class="text-right">'+fmt(p.valoare)+'</td><td class="text-right">'+fmt(p.tva)+'</td></tr>';});
         document.getElementById('mBody').innerHTML=h;
-        var sv=0,st=0;f.forEach(function(l){sv+=l.valoare;st+=l.tva;});
+        var sv=0,st=0;f.forEach(function(p){sv+=p.valoare;st+=p.tva;});
         document.getElementById('mFoot').innerHTML='<strong>'+f.length+' produse | Valoare: '+fmt(sv)+' | TVA: '+fmt(st)+'</strong>';
         renderPag('mPag',tp,mPage,function(p){mPage=p;renderMonetarTable();});
     }

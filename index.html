@@ -102,6 +102,8 @@
         <div class="nav-item" onclick="showSection('monetar')">Cabinet de curiozitati</div>
         <div class="nav-item" onclick="showSection('stocuri')">Stocuri</div>
         <div class="nav-item" onclick="showSection('vanzari')">Vanzari Detaliate</div>
+        <div class="nav-item" onclick="showSection('profitabilitate')">Profitabilitate</div>
+        <div class="nav-item" onclick="showSection('pnl')">P&amp;L pe Canale</div>
         <div class="nav-item" onclick="showSection('scadentar')">Scadentar</div>
     </div>
 
@@ -234,6 +236,52 @@
                 </table>
                 <div class="pag" id="vPag"></div>
             </div>
+        </div>
+
+        <!-- PROFITABILITATE SECTION -->
+        <div id="profitabilitate" class="section">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+                <span style="font-size:13px;font-weight:500;color:#6b7280;">Luna:</span>
+                <select id="profitLuna" class="tbl-filter" onchange="renderProfitabilitate()" style="min-width:160px;"><option value="all">Tot anul (cumulat)</option></select>
+                <span style="font-size:13px;font-weight:500;color:#6b7280;margin-left:8px;">Canal:</span>
+                <select id="profitCanal" class="tbl-filter" onchange="renderProfitabilitate()" style="min-width:120px;">
+                    <option value="all">Toate canalele</option>
+                    <option value="WEB">WEB</option><option value="GLO">GLO</option><option value="MOD">MOD</option>
+                    <option value="TRAD">TRAD</option><option value="EX">EX</option><option value="SHOP">SHOP</option>
+                </select>
+                <input type="text" id="searchProfit" class="tbl-search" placeholder="Cauta produs..." oninput="renderProfitabilitate()" style="max-width:250px;">
+            </div>
+            <div id="cheltuieliCards" style="margin-bottom:16px;"></div>
+            <div id="summaryProfit" style="color:#6b7280;font-size:13px;margin-bottom:8px;font-weight:600;"></div>
+            <div class="tbl-box">
+                <table>
+                    <thead>
+                        <tr>
+                            <th onclick="sortProfitTable(0)">Produs</th>
+                            <th class="text-right" onclick="sortProfitTable(1)">Cant.</th>
+                            <th class="text-right" onclick="sortProfitTable(2)">Pret Vanz/buc</th>
+                            <th class="text-right" onclick="sortProfitTable(3)">Cost MP/buc</th>
+                            <th class="text-right" onclick="sortProfitTable(4)">Cost Total/buc</th>
+                            <th class="text-right" onclick="sortProfitTable(5)">Profit/buc</th>
+                            <th class="text-right" onclick="sortProfitTable(6)">Marja %</th>
+                            <th class="text-right" onclick="sortProfitTable(7)">Total Venituri</th>
+                            <th class="text-right" onclick="sortProfitTable(8)">Total Profit</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableProfitabilitate"></tbody>
+                </table>
+                <div class="pag" id="paginationProfit"></div>
+            </div>
+        </div>
+
+        <!-- P&L PE CANALE SECTION -->
+        <div id="pnl" class="section">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+                <span style="font-size:13px;font-weight:500;color:#6b7280;">Luna:</span>
+                <select id="pnlCanaleLuna" class="tbl-filter" onchange="renderPnlCanale()" style="min-width:160px;"></select>
+                <span id="pnlCanaleStatus" style="color:#6b7280;font-size:12px;margin-left:12px;"></span>
+            </div>
+            <div id="pnlCanaleContent"></div>
         </div>
 
         <!-- SCADENTAR SECTION -->
@@ -668,9 +716,447 @@
         if(next)next.onclick=function(){cb(cp+1);};
     }
 
+    // =========== PROFITABILITATE ===========
+    var profitSort={col:-1,asc:true}, profitPage=0, profitPS=25;
+    var profitDataCache=[], profitSerieMap={};
+    var cantPerCanal={}, totalCantAllForGeneral=0;
+
+    function populateProfitLuna(){
+        var sel=document.getElementById('profitLuna'); if(!sel)return;
+        var bl=WINMENTOR_DATA.balanta_lunara||[];
+        var m=WINMENTOR_DATA.meta||{};
+        sel.innerHTML='<option value="all">Tot anul (cumulat)</option>';
+        bl.forEach(function(b){
+            var o=document.createElement('option');o.value=b.luna;
+            o.textContent=(luniNume[b.luna]||'Luna '+b.luna)+' '+(b.an||2026);
+            sel.appendChild(o);
+        });
+        if(m.luna) sel.value=m.luna;
+    }
+
+    function getCheltuieliForPeriod(lunaFilter){
+        var bl=WINMENTOR_DATA.balanta_lunara||[];
+        var ch={cifra_afaceri:0,materii_prime:0,cost_marfuri:0,ambalaje:0,discount_primite:0,
+            marja_bruta:0,venituri_productie:0,marja_bruta_totala:0,
+            salarii:0,tichete:0,deplasari:0,chirii:0,energie:0,telecom:0,materiale:0,obiecte_inventar:0,
+            transport:0,servicii_bancare:0,asigurari:0,servicii_terti:0,colaboratori:0,comisioane:0,
+            publicitate:0,reparatii:0,amenzi_donatii:0,taxe:0,amortizare:0,dobanzi:0,dif_curs:0,
+            total_cheltuieli_op:0,ebitda:0,ebit:0,rezultat:0,total:0};
+        bl.forEach(function(m){
+            if(lunaFilter!=='all'&&m.luna!==parseInt(lunaFilter))return;
+            ch.cifra_afaceri+=m.cifra_afaceri||0;
+            ch.materii_prime+=m.ch_materii_prime||0;
+            ch.cost_marfuri+=m.ch_cost_marfuri||0;
+            ch.ambalaje+=m.ch_ambalaje||0;
+            ch.discount_primite+=m.ch_discount_primite||0;
+            ch.venituri_productie+=m.venituri_productie||0;
+            ch.salarii+=(m.ch_salarii||0)+(m.ch_asig_sociale||0);
+            ch.tichete+=m.ch_tichete||0;
+            ch.deplasari+=m.ch_deplasari||0;
+            ch.chirii+=m.ch_chirii||0;
+            ch.energie+=m.ch_energie||0;
+            ch.telecom+=m.ch_posta_telecom||0;
+            ch.materiale+=(m.ch_materiale||0)+(m.ch_materiale_nestocate||0);
+            ch.obiecte_inventar+=m.ch_obiecte_inventar||0;
+            ch.transport+=m.ch_transport||0;
+            ch.servicii_bancare+=m.ch_servicii_bancare||0;
+            ch.asigurari+=m.ch_asigurari||0;
+            ch.servicii_terti+=m.ch_alte_servicii||0;
+            ch.colaboratori+=m.ch_colaboratori||0;
+            ch.comisioane+=m.ch_comisioane||0;
+            ch.publicitate+=m.ch_publicitate||m.ch_protocol||0;
+            ch.reparatii+=m.ch_intretinere||0;
+            ch.amenzi_donatii+=(m.ch_alte_exploatare||0)+(m.ch_pierderi_creante||0);
+            ch.taxe+=m.ch_taxe||0;
+            ch.amortizare+=m.ch_amortizare||0;
+            ch.dobanzi+=m.ch_dobanzi||0;
+            ch.dif_curs+=m.ch_dif_curs||0;
+            ch.total+=m.total_cheltuieli||0;
+        });
+        ch.marja_bruta=ch.cifra_afaceri-ch.materii_prime-ch.cost_marfuri-ch.ambalaje+ch.discount_primite;
+        ch.marja_bruta_totala=ch.marja_bruta+ch.venituri_productie;
+        ch.total_cheltuieli_op=ch.salarii+ch.tichete+ch.deplasari+ch.chirii+ch.energie+ch.telecom+ch.materiale+ch.obiecte_inventar+ch.transport+ch.servicii_bancare+ch.asigurari+ch.servicii_terti+ch.colaboratori+ch.comisioane+ch.publicitate+ch.reparatii+ch.amenzi_donatii+ch.taxe+ch.amortizare;
+        ch.rezultat=ch.marja_bruta_totala-ch.total_cheltuieli_op-ch.dobanzi-ch.dif_curs;
+        ch.ebit=ch.rezultat+ch.dobanzi+ch.dif_curs;
+        ch.ebitda=ch.ebit+ch.amortizare;
+        return ch;
+    }
+
+    function renderCheltuieliCards(ch){
+        var el=document.getElementById('cheltuieliCards');if(!el)return;
+        var marjaP=ch.cifra_afaceri>0?(ch.marja_bruta_totala/ch.cifra_afaceri*100).toFixed(1):'0';
+        var ebitdaP=ch.cifra_afaceri>0?(ch.ebitda/ch.cifra_afaceri*100).toFixed(1):'0';
+        var rezP=ch.cifra_afaceri>0?(ch.rezultat/ch.cifra_afaceri*100).toFixed(1):'0';
+        function kpi(label,val,pct,color,big){
+            var bg=big?'background:'+color+';color:#fff;':'background:#fff;border:1px solid #e4e7ec;';
+            return '<div style="'+bg+'border-radius:10px;padding:12px 18px;min-width:140px;text-align:center;">'+
+                '<div style="font-size:10px;'+(big?'color:rgba(255,255,255,0.8);':'color:#6b7280;')+'text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">'+label+'</div>'+
+                '<div style="font-size:'+(big?'18':'15')+'px;font-weight:700;'+(big?'':'color:'+color+';')+'">'+fmt(val)+'</div>'+
+                (pct!==null?'<div style="font-size:11px;margin-top:2px;'+(big?'color:rgba(255,255,255,0.7);':'color:#9ca3af;')+'">'+pct+'% din CA</div>':'')+
+                '</div>';
+        }
+        var h='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">';
+        h+=kpi('Cifra de Afaceri',ch.cifra_afaceri,null,'#374151',true);
+        h+=kpi('Marja Bruta Totala',ch.marja_bruta_totala,marjaP,ch.marja_bruta_totala>=0?'#22c55e':'#ef4444',true);
+        h+=kpi('EBITDA',ch.ebitda,ebitdaP,ch.ebitda>=0?'#e85d04':'#ef4444',true);
+        h+=kpi('Rezultat Net',ch.rezultat,rezP,ch.rezultat>=0?'#22c55e':'#ef4444',true);
+        h+='</div>';
+        h+='<div style="display:flex;gap:6px;flex-wrap:wrap;">';
+        var det=[['Materii Prime',ch.materii_prime,'601'],['Cost Marfuri',ch.cost_marfuri,'607'],['Ambalaje',ch.ambalaje,'608'],
+            ['Angajati',ch.salarii+ch.tichete+ch.deplasari,'641+642+625'],['Transport',ch.transport,'624'],
+            ['Publicitate',ch.publicitate,'623'],['Servicii Terti',ch.servicii_terti,'628'],['Chirii',ch.chirii,'612'],
+            ['Energie',ch.energie,'605'],['Amortizare',ch.amortizare,'681'],['Dobanzi',ch.dobanzi,'666'],
+            ['Dif. Curs',ch.dif_curs,'665'],['Taxe',ch.taxe,'635'],['Reparatii',ch.reparatii,'611']];
+        det.forEach(function(d){
+            if(d[1]===0)return;
+            h+='<div style="background:#f9fafb;border-radius:8px;padding:5px 10px;text-align:center;border:1px solid #e4e7ec;">'+
+                '<div style="font-size:9px;color:#9ca3af;">'+d[0]+' <span style="color:#d1d5db;">('+d[2]+')</span></div>'+
+                '<div style="font-size:13px;font-weight:600;color:#ef4444;">'+fmt(d[1])+'</div></div>';
+        });
+        h+='</div>';
+        el.innerHTML=h;
+    }
+
+    function recalcCantPerCanal(lunaFilter){
+        cantPerCanal={};totalCantAllForGeneral=0;
+        var vanzari=(WINMENTOR_DATA.vanzari||[]).filter(function(item){
+            var tipDoc=(item.tip_doc||'').toString();
+            if(tipDoc!=='19'&&tipDoc!=='22'&&tipDoc!=='26')return false;
+            if(lunaFilter!=='all'){var d=item.data||'';var im=parseInt(d.substring(5,7));if(im!==parseInt(lunaFilter))return false;}
+            return true;
+        });
+        vanzari.forEach(function(item){
+            var serie=item.serie||'FARA';var cant=item.cantitate||0;
+            if(!cantPerCanal[serie])cantPerCanal[serie]=0;
+            cantPerCanal[serie]+=cant;totalCantAllForGeneral+=cant;
+        });
+    }
+
+    function renderProfitabilitate(){
+        var lunaFilter=document.getElementById('profitLuna')?document.getElementById('profitLuna').value:'all';
+        var canalFilter=document.getElementById('profitCanal')?document.getElementById('profitCanal').value:'all';
+        var search=document.getElementById('searchProfit')?document.getElementById('searchProfit').value.toLowerCase():'';
+        var ch=getCheltuieliForPeriod(lunaFilter);
+        renderCheltuieliCards(ch);
+        var vanzari=(WINMENTOR_DATA.vanzari||[]).filter(function(item){
+            var tipDoc=(item.tip_doc||'').toString();
+            if(tipDoc!=='19'&&tipDoc!=='22'&&tipDoc!=='26')return false;
+            if(lunaFilter!=='all'){var d=item.data||'';var im=parseInt(d.substring(5,7));if(im!==parseInt(lunaFilter))return false;}
+            if(canalFilter!=='all'){if((item.serie||'')!==canalFilter)return false;}
+            return true;
+        });
+        var productMap={};var totalCantAll=0;
+        profitSerieMap={};
+        vanzari.forEach(function(item){
+            var art=item.articol||'Necunoscut';var serie=item.serie||'FARA SERIE';
+            if(!productMap[art])productMap[art]={articol:art,cantitate:0,valoare:0};
+            productMap[art].cantitate+=item.cantitate||0;
+            productMap[art].valoare+=item.valoare||0;
+            totalCantAll+=item.cantitate||0;
+            if(!profitSerieMap[art])profitSerieMap[art]={};
+            if(!profitSerieMap[art][serie])profitSerieMap[art][serie]={cantitate:0,valoare:0};
+            profitSerieMap[art][serie].cantitate+=item.cantitate||0;
+            profitSerieMap[art][serie].valoare+=item.valoare||0;
+        });
+        var stocCostMap={};
+        (WINMENTOR_DATA.stoc||[]).forEach(function(s){if(s.cantitate>0)stocCostMap[s.denumire]=s.valoare/s.cantitate;});
+        var consumCostMap={};
+        if(WINMENTOR_DATA.consumuri){
+            var luniC=(lunaFilter==='all'||!WINMENTOR_DATA.consumuri[lunaFilter])?Object.keys(WINMENTOR_DATA.consumuri):[lunaFilter];
+            var consumAgg={};
+            luniC.forEach(function(l){var ld=WINMENTOR_DATA.consumuri[l]||{};for(var p in ld){if(!consumAgg[p])consumAgg[p]={cantitate:0,cost_total:0};consumAgg[p].cantitate+=ld[p].cantitate||0;consumAgg[p].cost_total+=ld[p].cost_total||0;}});
+            for(var p in consumAgg){if(consumAgg[p].cantitate>0)consumCostMap[p]=consumAgg[p].cost_total/consumAgg[p].cantitate;}
+        }
+        var cheltuieliIndirecte=ch.total_cheltuieli_op||0;
+        recalcCantPerCanal(lunaFilter);
+        var costPerBuc=0;
+        if(typeof ALOCARE_DATA!=='undefined'){
+            var _luniAl=(lunaFilter==='all'||!ALOCARE_DATA[lunaFilter])?Object.keys(ALOCARE_DATA):[lunaFilter];
+            var _nrLuni=_luniAl.length;var _totalChAlocat=0;
+            _luniAl.forEach(function(l){var al=ALOCARE_DATA[l]||{};for(var c in al){if(al[c].channels){for(var ch2 in al[c].channels)_totalChAlocat+=al[c].channels[ch2];}if(al[c].general)_totalChAlocat+=al[c].general;}});
+            var _useFb=(lunaFilter!=='all'&&!ALOCARE_DATA[lunaFilter]);
+            var _chMediu=_useFb?_totalChAlocat/_nrLuni:_totalChAlocat;
+            if(canalFilter!=='all'){
+                var _chCanal=0,_chGen=0;
+                _luniAl.forEach(function(l){var al=ALOCARE_DATA[l]||{};for(var c in al){if(al[c].channels&&al[c].channels[canalFilter])_chCanal+=al[c].channels[canalFilter];if(al[c].general)_chGen+=al[c].general;}});
+                if(_useFb){_chCanal=_chCanal/_nrLuni;_chGen=_chGen/_nrLuni;}
+                var _cantCanal=cantPerCanal[canalFilter]||totalCantAll;
+                costPerBuc=(_chCanal/_cantCanal)+(_chGen/(totalCantAllForGeneral||1));
+            }else{costPerBuc=totalCantAll>0?_chMediu/totalCantAll:0;}
+        }else{
+            if(cheltuieliIndirecte<0)cheltuieliIndirecte=0;
+            costPerBuc=totalCantAll>0?cheltuieliIndirecte/totalCantAll:0;
+        }
+        function findConsumCost(artName){
+            var artUp=artName.toUpperCase();
+            for(var cp2 in consumCostMap){var cUp=cp2.toUpperCase();
+                if(artUp.indexOf(cUp)!==-1||cUp.indexOf(artUp)!==-1)return consumCostMap[cp2];
+                var cW=cUp.split(/\s+/);var mc=0;for(var w=0;w<cW.length;w++){if(cW[w].length>2&&artUp.indexOf(cW[w])!==-1)mc++;}
+                if(cW.length>0&&mc>=Math.max(2,cW.length*0.6))return consumCostMap[cp2];
+            }return 0;
+        }
+        var data=Object.values(productMap).map(function(p){
+            var cc=findConsumCost(p.articol);var costMPbuc=cc>0?cc:(stocCostMap[p.articol]||0);
+            var costTotalBuc=costMPbuc+costPerBuc;var pretVanzBuc=p.cantitate>0?p.valoare/p.cantitate:0;
+            var profitBuc=pretVanzBuc-costTotalBuc;var marja=pretVanzBuc>0?(profitBuc/pretVanzBuc)*100:0;
+            var totalProfit=profitBuc*p.cantitate;var sursa=cc>0?'consum':'stoc';
+            return {articol:p.articol,cantitate:Math.round(p.cantitate*100)/100,pretVanzBuc:Math.round(pretVanzBuc*100)/100,costMPbuc:Math.round(costMPbuc*100)/100,costTotalBuc:Math.round(costTotalBuc*100)/100,profitBuc:Math.round(profitBuc*100)/100,marja:Math.round(marja*10)/10,valoare:Math.round(p.valoare*100)/100,totalProfit:Math.round(totalProfit*100)/100,sursa:sursa};
+        });
+        if(search)data=data.filter(function(d){return d.articol.toLowerCase().indexOf(search)!==-1;});
+        data=data.filter(function(d){return d.costMPbuc>0;});
+        if(profitSort.col>=0){
+            var cols2=['articol','cantitate','pretVanzBuc','costMPbuc','costTotalBuc','profitBuc','marja','valoare','totalProfit'];
+            var sk=cols2[profitSort.col]||'valoare';
+            data.sort(function(a,b){var va=a[sk],vb=b[sk];if(typeof va==='number')return profitSort.asc?va-vb:vb-va;return profitSort.asc?String(va).localeCompare(String(vb),'ro'):String(vb).localeCompare(String(va),'ro');});
+        }else{data.sort(function(a,b){return b.valoare-a.valoare;});}
+        profitDataCache=data;
+        var totVen=data.reduce(function(s,x){return s+x.valoare;},0);
+        var totProf=data.reduce(function(s,x){return s+x.totalProfit;},0);
+        var totMarj=totVen>0?(totProf/totVen*100):0;
+        var sumEl=document.getElementById('summaryProfit');
+        if(sumEl){
+            var cLabel=canalFilter!=='all'?' ['+canalFilter+']':'';
+            var costSrc=canalFilter!=='all'&&typeof ALOCARE_DATA!=='undefined'?' (alocat)':' (total)';
+            sumEl.innerHTML=data.length+' produse'+cLabel+' | Venituri: '+fmt(totVen)+' | <span style="color:'+(totProf>=0?'#22c55e':'#ef4444')+';font-weight:700;">Profit: '+fmt(totProf)+' ('+totMarj.toFixed(1)+'%)</span> | Cost indirect/buc: '+fmt(Math.round(costPerBuc*100)/100)+costSrc;
+        }
+        var tp=Math.ceil(data.length/profitPS)||1;if(profitPage>=tp)profitPage=tp-1;
+        var page=data.slice(profitPage*profitPS,(profitPage+1)*profitPS);
+        var tbody=document.getElementById('tableProfitabilitate');tbody.innerHTML='';
+        page.forEach(function(item,idx){
+            var rowId='profitRow_'+(profitPage*profitPS+idx);
+            var serii=profitSerieMap[item.articol]||{};var serieKeys=Object.keys(serii);
+            var hasMS=serieKeys.length>1||(serieKeys.length===1&&serieKeys[0]!=='FARA SERIE');
+            var row=tbody.insertRow();row.id=rowId;row.style.cursor=hasMS?'pointer':'default';
+            if(hasMS)row.onclick=(function(r,a,c){return function(){toggleProfitSerie(r,a,c);};})(rowId,item.articol,item.costMPbuc);
+            var c0=row.insertCell(0);
+            c0.innerHTML=hasMS?'<span class="expand-icon" style="display:inline-block;margin-right:6px;transition:transform 0.2s;">&#9654;</span>'+item.articol:item.articol;
+            var c1=row.insertCell(1);c1.textContent=fmtN(item.cantitate);c1.style.textAlign='right';
+            var c2=row.insertCell(2);c2.textContent=fmt(item.pretVanzBuc);c2.style.textAlign='right';c2.style.fontWeight='600';
+            var c3=row.insertCell(3);c3.innerHTML=fmt(item.costMPbuc)+(item.sursa==='consum'?' <span title="Cost din bonuri de consum" style="color:#3b82f6;font-size:10px;">BC</span>':' <span title="Cost din stoc" style="color:#9ca3af;font-size:10px;">ST</span>');c3.style.textAlign='right';c3.style.color='#ef4444';
+            var c4=row.insertCell(4);c4.textContent=fmt(item.costTotalBuc);c4.style.textAlign='right';c4.style.color='#ef4444';c4.style.fontWeight='600';
+            var c5=row.insertCell(5);c5.textContent=fmt(item.profitBuc);c5.style.textAlign='right';c5.style.fontWeight='700';c5.style.color=item.profitBuc>=0?'#22c55e':'#ef4444';
+            var c6=row.insertCell(6);c6.textContent=item.marja.toFixed(1)+'%';c6.style.textAlign='right';c6.style.fontWeight='600';c6.style.color=item.marja>=20?'#22c55e':item.marja>=0?'#f59e0b':'#ef4444';
+            var c7=row.insertCell(7);c7.textContent=fmt(item.valoare);c7.style.textAlign='right';c7.style.color='#6b7280';
+            var c8=row.insertCell(8);c8.textContent=fmt(item.totalProfit);c8.style.textAlign='right';c8.style.fontWeight='600';c8.style.color=item.totalProfit>=0?'#22c55e':'#ef4444';
+        });
+        renderPag('paginationProfit',tp,profitPage,function(p){profitPage=p;renderProfitabilitate();});
+    }
+
+    function sortProfitTable(col){
+        if(profitSort.col===col)profitSort.asc=!profitSort.asc;else{profitSort.col=col;profitSort.asc=true;}
+        profitPage=0;renderProfitabilitate();
+    }
+
+    function calcCostPerBucCanal(canal,cantCanal,lunaFilter){
+        if(!cantCanal||cantCanal<=0)return 0;if(typeof ALOCARE_DATA==='undefined')return 0;
+        var _fb=(lunaFilter!=='all'&&!ALOCARE_DATA[lunaFilter]);
+        var luniAl=(lunaFilter==='all'||_fb)?Object.keys(ALOCARE_DATA):[lunaFilter];
+        var chCanal=0;
+        luniAl.forEach(function(l){var al=ALOCARE_DATA[l]||{};for(var c in al){if(al[c].channels&&al[c].channels[canal])chCanal+=al[c].channels[canal];}});
+        if(_fb)chCanal=chCanal/luniAl.length;
+        return chCanal/cantCanal;
+    }
+
+    function calcCostGeneralPerBuc(totalCant,lunaFilter){
+        if(!totalCant||totalCant<=0)return 0;if(typeof ALOCARE_DATA==='undefined')return 0;
+        var _fb=(lunaFilter!=='all'&&!ALOCARE_DATA[lunaFilter]);
+        var luniAl=(lunaFilter==='all'||_fb)?Object.keys(ALOCARE_DATA):[lunaFilter];
+        var chGen=0;
+        luniAl.forEach(function(l){var al=ALOCARE_DATA[l]||{};for(var c in al){if(al[c].general)chGen+=al[c].general;}});
+        if(_fb)chGen=chGen/luniAl.length;
+        return chGen/totalCant;
+    }
+
+    function toggleProfitSerie(rowId,articol,costMPbuc){
+        var detailId=rowId+'_serieDetail';var existing=document.getElementById(detailId);
+        var parentRow=document.getElementById(rowId);var icon=parentRow?parentRow.querySelector('.expand-icon'):null;
+        if(existing){existing.remove();if(icon)icon.style.transform='rotate(0deg)';return;}
+        if(icon)icon.style.transform='rotate(90deg)';
+        var lunaFilter=document.getElementById('profitLuna')?document.getElementById('profitLuna').value:'all';
+        recalcCantPerCanal(lunaFilter);
+        var costGenBuc=calcCostGeneralPerBuc(totalCantAllForGeneral,lunaFilter);
+        var serii=profitSerieMap[articol]||{};var serieKeys=Object.keys(serii).sort();
+        var detailRow=document.createElement('tr');detailRow.id=detailId;
+        var dc=document.createElement('td');dc.colSpan=9;dc.style.padding='0 0 0 30px';dc.style.background='#f9fafb';
+        var sh='<table style="width:100%;margin:8px 0;font-size:12px;border-collapse:collapse;">';
+        sh+='<thead><tr style="background:#f3f4f6;"><th style="text-align:left;padding:6px 10px;">Canal</th><th style="text-align:right;padding:6px 10px;">Cant</th><th style="text-align:right;padding:6px 10px;">Pret Vanz/buc</th><th style="text-align:right;padding:6px 10px;">Cost MP/buc</th><th style="text-align:right;padding:6px 10px;">Cost Canal/buc</th><th style="text-align:right;padding:6px 10px;">Cost Gen/buc</th><th style="text-align:right;padding:6px 10px;">Cost Total/buc</th><th style="text-align:right;padding:6px 10px;">Profit/buc</th><th style="text-align:right;padding:6px 10px;">Marja %</th></tr></thead><tbody>';
+        serieKeys.forEach(function(serie){
+            var s=serii[serie];var pretV=s.cantitate>0?s.valoare/s.cantitate:0;
+            var costCBuc=calcCostPerBucCanal(serie,cantPerCanal[serie]||0,lunaFilter);
+            var costTB=costMPbuc+costCBuc+costGenBuc;var profB=pretV-costTB;
+            var mj=pretV>0?(profB/pretV)*100:0;
+            var pc=profB>=0?'#22c55e':'#ef4444';var mc2=mj>=20?'#22c55e':mj>=0?'#f59e0b':'#ef4444';
+            sh+='<tr><td style="padding:5px 10px;font-weight:600;">'+(serie||'FARA SERIE')+'</td>';
+            sh+='<td style="text-align:right;padding:5px 10px;">'+fmtN(Math.round(s.cantitate*100)/100)+'</td>';
+            sh+='<td style="text-align:right;padding:5px 10px;font-weight:600;">'+fmt(Math.round(pretV*100)/100)+'</td>';
+            sh+='<td style="text-align:right;padding:5px 10px;color:#ef4444;">'+fmt(Math.round(costMPbuc*100)/100)+'</td>';
+            sh+='<td style="text-align:right;padding:5px 10px;color:#e85d04;">'+fmt(Math.round(costCBuc*100)/100)+'</td>';
+            sh+='<td style="text-align:right;padding:5px 10px;color:#8b5cf6;">'+fmt(Math.round(costGenBuc*100)/100)+'</td>';
+            sh+='<td style="text-align:right;padding:5px 10px;color:#ef4444;font-weight:700;">'+fmt(Math.round(costTB*100)/100)+'</td>';
+            sh+='<td style="text-align:right;padding:5px 10px;font-weight:700;color:'+pc+';">'+fmt(Math.round(profB*100)/100)+'</td>';
+            sh+='<td style="text-align:right;padding:5px 10px;font-weight:600;color:'+mc2+';">'+mj.toFixed(1)+'%</td></tr>';
+        });
+        sh+='</tbody></table>';dc.innerHTML=sh;detailRow.appendChild(dc);
+        if(parentRow&&parentRow.nextSibling)parentRow.parentNode.insertBefore(detailRow,parentRow.nextSibling);
+        else if(parentRow)parentRow.parentNode.appendChild(detailRow);
+    }
+
+    // =========== P&L PE CANALE ===========
+    function togglePnlDetail(rowId,contPrefix,lunaFilter){
+        var detailId=rowId+'_detail';var existing=document.getElementById(detailId);
+        if(existing){existing.remove();return;}
+        var facturi=(WINMENTOR_DATA.facturi_cheltuieli||[]).filter(function(f){
+            if(f.cont_prefix!==contPrefix&&!f.cont.startsWith(contPrefix))return false;
+            if(lunaFilter!=='all'&&f.luna!==parseInt(lunaFilter))return false;
+            return true;
+        });
+        if(facturi.length===0){
+            var pr=document.getElementById(rowId);if(pr){
+                var tr=document.createElement('tr');tr.id=detailId;
+                tr.innerHTML='<td colspan="9" style="padding:8px 20px;background:#fefce8;font-size:12px;color:#9ca3af;font-style:italic;">Nu sunt facturi individuale disponibile.</td>';
+                pr.parentNode.insertBefore(tr,pr.nextSibling);
+            }return;
+        }
+        facturi.sort(function(a,b){return Math.abs(b.valoare)-Math.abs(a.valoare);});
+        var html='<td colspan="9" style="padding:0;"><table style="width:100%;font-size:12px;border-collapse:collapse;background:#fefefe;">';
+        html+='<tr style="background:#f3f4f6;"><th style="padding:5px 10px;text-align:left;">Furnizor</th><th style="padding:5px 10px;text-align:left;">Nr. Doc</th><th style="padding:5px 10px;text-align:left;">Data</th><th style="padding:5px 10px;text-align:left;">Cont</th><th style="padding:5px 10px;text-align:left;">Descriere</th><th style="padding:5px 10px;text-align:right;">Valoare</th></tr>';
+        var tf=0;
+        facturi.forEach(function(f,i){
+            var bg=i%2===0?'#ffffff':'#f9fafb';
+            html+='<tr style="background:'+bg+';border-bottom:1px solid #f3f4f6;"><td style="padding:4px 10px;">'+(f.furnizor||'-')+'</td><td style="padding:4px 10px;">'+(f.nr_doc||'-')+'</td><td style="padding:4px 10px;">'+(f.data||'-')+'</td><td style="padding:4px 10px;color:#9ca3af;">'+(f.cont||'-')+'</td><td style="padding:4px 10px;color:#6b7280;">'+(f.descriere||'-')+'</td><td style="padding:4px 10px;text-align:right;font-weight:500;">'+fmt(f.valoare)+'</td></tr>';
+            tf+=f.valoare;
+        });
+        html+='<tr style="background:#f3f4f6;font-weight:700;"><td colspan="5" style="padding:5px 10px;">Total ('+facturi.length+' facturi)</td><td style="padding:5px 10px;text-align:right;">'+fmt(tf)+'</td></tr>';
+        html+='</table></td>';
+        var pr2=document.getElementById(rowId);if(pr2){var tr2=document.createElement('tr');tr2.id=detailId;tr2.innerHTML=html;pr2.parentNode.insertBefore(tr2,pr2.nextSibling);}
+    }
+
+    function initPnlCanaleSelector(){
+        var sel=document.getElementById('pnlCanaleLuna');if(!sel)return;
+        var bl=WINMENTOR_DATA.balanta_lunara||[];
+        sel.innerHTML='';
+        bl.forEach(function(m){var o=document.createElement('option');o.value=m.luna;o.textContent=luniNume[m.luna]||('Luna '+m.luna);sel.appendChild(o);});
+        if(bl.length>0)sel.value=bl[0].luna;
+        renderPnlCanale();
+    }
+
+    function renderPnlCanale(){
+        var sel=document.getElementById('pnlCanaleLuna');if(!sel)return;
+        var lunaFilter=sel.value;
+        var container=document.getElementById('pnlCanaleContent');
+        var statusEl=document.getElementById('pnlCanaleStatus');
+        if(!container)return;
+        var channels=['WEB','GLO','MOD','TRAD','EX','SHOP'];
+        var ch=getCheltuieliForPeriod(lunaFilter);
+        var alocare=(typeof ALOCARE_DATA!=='undefined')?ALOCARE_DATA[lunaFilter]||{}:{};
+        var hasAlocare=Object.keys(alocare).length>0;
+        if(statusEl){
+            if(!hasAlocare)statusEl.innerHTML='<span style="color:#ef4444;">&#9888; Fara alocare. Completeaza alocare_cheltuieli.xlsx</span>';
+            else statusEl.innerHTML='<span style="color:#22c55e;">&#10003; Alocare disponibila</span>';
+        }
+        var caPerChannel={};channels.forEach(function(c){caPerChannel[c]=0;});
+        var vanzari=WINMENTOR_DATA.vanzari||[];
+        vanzari.forEach(function(v){
+            var td=(v.tip_doc||'').toString();if(td!=='19'&&td!=='22'&&td!=='26')return;
+            var d=v.data||'';var im=parseInt(d.substring(5,7));
+            if(lunaFilter!=='all'&&im!==parseInt(lunaFilter))return;
+            var s=v.serie||'';if(s&&caPerChannel.hasOwnProperty(s))caPerChannel[s]+=v.valoare||0;
+        });
+        var stocCostMap={};
+        (WINMENTOR_DATA.stoc||[]).forEach(function(s){if(s.cantitate>0)stocCostMap[s.denumire]=s.valoare/s.cantitate;});
+        var costProdPerCh={};channels.forEach(function(c){costProdPerCh[c]=0;});
+        vanzari.forEach(function(v){
+            var td=(v.tip_doc||'').toString();if(td!=='19'&&td!=='22'&&td!=='26')return;
+            var d=v.data||'';var im=parseInt(d.substring(5,7));
+            if(lunaFilter!=='all'&&im!==parseInt(lunaFilter))return;
+            var s=v.serie||'';if(!s||!costProdPerCh.hasOwnProperty(s))return;
+            costProdPerCh[s]+=(stocCostMap[v.articol]||0)*(v.cantitate||0);
+        });
+        function getAl(channel,cats){var t=0;cats.forEach(function(cat){if(alocare[cat]&&alocare[cat].channels&&alocare[cat].channels[channel])t+=alocare[cat].channels[channel];});return t;}
+        function getGen(cats){var t=0;cats.forEach(function(cat){if(alocare[cat]&&alocare[cat].general)t+=alocare[cat].general;});return t;}
+        var h='<table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:10px;">';
+        h+='<thead><tr style="background:#374151;color:#fff;"><th style="padding:10px 14px;text-align:left;">P&L</th><th style="padding:10px 14px;text-align:right;">TOTAL</th><th style="padding:10px 14px;text-align:right;color:#9ca3af;">GENERAL</th>';
+        channels.forEach(function(c){h+='<th style="padding:10px 14px;text-align:right;">'+c+'</th>';});
+        h+='</tr></thead><tbody>';
+        function row(label,totalVal,chVals,bold,bg,indent,generalVal){
+            var pad=(indent||0)*20+12;var fw=bold?'font-weight:700;':'';var bgS=bg?'background:'+bg+';':'';
+            var r='<tr style="border-bottom:1px solid #e5e7eb;'+bgS+'">';
+            r+='<td style="padding:7px 14px;padding-left:'+pad+'px;'+fw+'">'+label+'</td>';
+            var col=function(v){return v<-0.5?'color:#ef4444;':'';};
+            r+='<td style="padding:7px 14px;text-align:right;'+fw+col(totalVal)+'">'+fmt(totalVal)+'</td>';
+            var gv=generalVal||0;
+            r+='<td style="padding:7px 14px;text-align:right;'+fw+'color:#9ca3af;'+col(gv)+'">'+(gv!==0?fmt(gv):'-')+'</td>';
+            channels.forEach(function(c){var v=chVals[c]||0;r+='<td style="padding:7px 14px;text-align:right;'+fw+col(v)+'">'+fmt(v)+'</td>';});
+            return r+'</tr>';
+        }
+        function pctR(label,valTotal,valCh,caT,caCh){
+            var r='<tr style="border-bottom:1px solid #e5e7eb;background:#f9fafb;">';
+            r+='<td style="padding:3px 14px;font-size:11px;color:#9ca3af;font-style:italic;">'+label+'</td>';
+            r+='<td style="padding:3px 14px;text-align:right;font-size:11px;color:#9ca3af;">'+(caT>0?(valTotal/caT*100).toFixed(1)+'%':'-')+'</td>';
+            r+='<td style="padding:3px 14px;text-align:right;font-size:11px;color:#9ca3af;">-</td>';
+            channels.forEach(function(c){var v=valCh[c]||0;var ca=caCh[c]||0;r+='<td style="padding:3px 14px;text-align:right;font-size:11px;color:#9ca3af;">'+(ca>0?(v/ca*100).toFixed(1)+'%':'-')+'</td>';});
+            return r+'</tr>';
+        }
+        h+=row('CIFRA DE AFACERI',ch.cifra_afaceri,caPerChannel,true,'#f0fdf4',0);
+        h+=row('(-) Cost productie (601)',ch.materii_prime,costProdPerCh,false,null,1);
+        if(ch.cost_marfuri>0){var cm={};channels.forEach(function(c){cm[c]=getAl(c,['607']);});h+=row('(-) Cost marfuri (607)',ch.cost_marfuri,hasAlocare?cm:{},false,null,1);}
+        if(ch.ambalaje>0){var am={};channels.forEach(function(c){am[c]=getAl(c,['608']);});h+=row('(-) Ambalaje (608)',ch.ambalaje,hasAlocare?am:{},false,null,1);}
+        if(ch.discount_primite>0){var dc={};channels.forEach(function(c){dc[c]=getAl(c,['609']);});h+=row('(+) Discounturi primite (609)',ch.discount_primite,hasAlocare?dc:{},false,null,1);}
+        var mb={};channels.forEach(function(c){mb[c]=(caPerChannel[c]||0)-(costProdPerCh[c]||0);});
+        h+=row('MARJA BRUTA',ch.marja_bruta,mb,true,'#dcfce7',0);
+        h+=pctR('% din CA',ch.marja_bruta,mb,ch.cifra_afaceri,caPerChannel);
+        if(ch.venituri_productie){var vp={};channels.forEach(function(c){vp[c]=0;});h+=row('(+) Venituri productie (711)',ch.venituri_productie,vp,false,null,1);}
+        var mbt={};channels.forEach(function(c){mbt[c]=mb[c];});
+        h+=row('MARJA BRUTA TOTALA',ch.marja_bruta_totala,mbt,true,'#dcfce7',0);
+        h+=pctR('% din CA',ch.marja_bruta_totala,mbt,ch.cifra_afaceri,caPerChannel);
+        h+='<tr style="background:#f3f4f6;border-top:2px solid #d1d5db;"><td colspan="'+(3+channels.length)+'" style="padding:8px 14px;font-weight:700;color:#6b7280;">CHELTUIELI OPERATIONALE</td></tr>';
+        var expRows=[['Salarii + Asig. Sociale',['641+642'],ch.salarii],['Tichete masa',['642T'],ch.tichete],['Deplasari',['625'],ch.deplasari],['Transport',['624'],ch.transport],['Publicitate / Protocol',['623'],ch.publicitate],['Chirii',['612'],ch.chirii],['Energie',['605'],ch.energie],['Telecom / Posta',['626'],ch.telecom],['Materiale consumabile',['602'],ch.materiale],['Obiecte inventar',['603'],ch.obiecte_inventar],['Servicii terti',['628'],ch.servicii_terti],['Colaboratori',['621'],ch.colaboratori],['Comisioane',['622'],ch.comisioane],['Servicii bancare',['627'],ch.servicii_bancare],['Asigurari',['613'],ch.asigurari],['Reparatii / Intretinere',['611'],ch.reparatii],['Amenzi / Donatii / Alte',['Alte'],ch.amenzi_donatii],['Taxe',['635'],ch.taxe],['Amortizare',['681'],ch.amortizare]];
+        var totOpCh={};channels.forEach(function(c){totOpCh[c]=0;});
+        var amortCh={};channels.forEach(function(c){amortCh[c]=0;});
+        var totGenOp=0;var expRowIdx=0;
+        expRows.forEach(function(er){
+            if(er[2]===0)return;
+            var ev={};channels.forEach(function(c){ev[c]=getAl(c,er[1]);totOpCh[c]+=ev[c];});
+            if(er[1][0]==='681')channels.forEach(function(c){amortCh[c]=ev[c];});
+            var genVal=hasAlocare?getGen(er[1]):0;totGenOp+=genVal;
+            var rId='pnlExp_'+expRowIdx;var contPfx=er[1][0].replace('+','');if(contPfx.length>3)contPfx=contPfx.substring(0,3);
+            var rHtml=row(er[0]+' <span style="font-size:10px;color:#9ca3af;">&#9660;</span>',er[2],hasAlocare?ev:{},false,null,1,genVal);
+            rHtml=rHtml.replace('<tr ','<tr id="'+rId+'" style="cursor:pointer;" onclick="togglePnlDetail(\''+rId+'\',\''+contPfx+'\',\''+lunaFilter+'\')" ');
+            rHtml=rHtml.replace('style="cursor:pointer;" style="','style="cursor:pointer;');
+            h+=rHtml;expRowIdx++;
+        });
+        var condCom=alocare['COND_COM']||null;
+        if(condCom&&condCom.total!==0){
+            var ccv={};channels.forEach(function(c){ccv[c]=(condCom.channels&&condCom.channels[c])||0;totOpCh[c]+=ccv[c];});
+            var cg=condCom.general||0;totGenOp+=cg;
+            h+=row('Conditii comerciale',condCom.total,ccv,false,'#fefce8',1,cg);
+        }
+        h+=row('TOTAL CHELTUIELI OPERATIONALE',ch.total_cheltuieli_op,totOpCh,true,'#fff7ed',0,totGenOp);
+        h+=pctR('% din CA',ch.total_cheltuieli_op,totOpCh,ch.cifra_afaceri,caPerChannel);
+        var ebitda={};channels.forEach(function(c){ebitda[c]=mbt[c]-totOpCh[c]+amortCh[c];});
+        h+=row('EBITDA',ch.ebitda,ebitda,true,'#eff6ff',0);
+        h+=pctR('% din CA',ch.ebitda,ebitda,ch.cifra_afaceri,caPerChannel);
+        var ebit={};channels.forEach(function(c){ebit[c]=mbt[c]-totOpCh[c];});
+        h+=row('EBIT',ch.ebit,ebit,true,'#eff6ff',0);
+        var dob={};channels.forEach(function(c){dob[c]=getAl(c,['666']);});
+        if(ch.dobanzi>0)h+=row('(-) Dobanzi',ch.dobanzi,hasAlocare?dob:{},false,null,1);
+        var dfc={};channels.forEach(function(c){dfc[c]=getAl(c,['665']);});
+        if(ch.dif_curs>0)h+=row('(-) Diferente curs',ch.dif_curs,hasAlocare?dfc:{},false,null,1);
+        var rez={};channels.forEach(function(c){rez[c]=mbt[c]-totOpCh[c]-(dob[c]||0)-(dfc[c]||0);});
+        var totalGen=totGenOp+(hasAlocare?getGen(['666']):0)+(hasAlocare?getGen(['665']):0);
+        h+=row('REZULTAT NET',ch.rezultat,rez,true,ch.rezultat>=0?'#dcfce7':'#fee2e2',0,totalGen);
+        h+=pctR('% din CA',ch.rezultat,rez,ch.cifra_afaceri,caPerChannel);
+        h+='</tbody></table>';
+        h+='<div style="margin-top:16px;padding:12px;background:#f9fafb;border-radius:8px;font-size:12px;color:#6b7280;border:1px solid #e5e7eb;">';
+        h+='<strong>Legenda:</strong> GENERAL = cheltuieli nealocate direct pe canale. Cost productie per canal = stoc x cantitate vanduta. Cheltuielile operationale se aloca din <strong>alocare_cheltuieli.xlsx</strong>.';
+        h+='</div>';
+        container.innerHTML=h;
+    }
+
     // =========== INIT ===========
     function init(){
         if(typeof WINMENTOR_DATA==='undefined')window.WINMENTOR_DATA={meta:{},sumar:{},stoc:[],vanzari:[],scadentar_clienti:[],balanta_lunara:[],monetar_zile:[],monetar_linii:[]};
+        if(typeof ALOCARE_DATA==='undefined')window.ALOCARE_DATA={};
         var m=WINMENTOR_DATA.meta||{};
         document.getElementById('tbPeriod').textContent=(luniNume[m.luna]||'')+' '+(m.an||2026);
         document.getElementById('tbTime').textContent=m.data_extragere||'-';
@@ -686,6 +1172,9 @@
         renderStocSection();
         renderVanzariTable();
         renderScadSection();
+        populateProfitLuna();
+        renderProfitabilitate();
+        initPnlCanaleSelector();
     }
 
     document.addEventListener('DOMContentLoaded',init);
@@ -694,6 +1183,7 @@
     <script>
         var _cb = Date.now();
         document.write('<scr'+'ipt src="date_winmentor.js?t='+_cb+'"><\/scr'+'ipt>');
+        document.write('<scr'+'ipt src="alocare_cheltuieli.js?t='+_cb+'"><\/scr'+'ipt>');
     </script>
 </body>
 </html>

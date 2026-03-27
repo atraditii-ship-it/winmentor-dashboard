@@ -399,10 +399,10 @@
     }
 
     // =========== MONETAR ===========
-    var mSort={col:-1,asc:true}, mPage=0, mPS=50, mView='total';
+    var mSort={col:2,asc:false}, mPage=0, mPS=50, mView='total';
 
     function setMView(v) {
-        mView=v; mSort={col:-1,asc:true}; mPage=0;
+        mView=v; mSort=v==='total'?{col:2,asc:false}:{col:-1,asc:true}; mPage=0;
         document.getElementById('mViewTotal').style.background = v==='total'?'#e85d04':'#fff';
         document.getElementById('mViewTotal').style.color = v==='total'?'#fff':'#374151';
         document.getElementById('mViewZile').style.background = v==='zile'?'#e85d04':'#fff';

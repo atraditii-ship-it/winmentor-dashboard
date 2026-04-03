@@ -1062,15 +1062,30 @@
             if(lunaFilter!=='all'&&im!==parseInt(lunaFilter))return;
             var s=v.serie||'';if(s&&caPerChannel.hasOwnProperty(s))caPerChannel[s]+=v.valoare||0;
         });
-        var stocCostMap={};
-        (WINMENTOR_DATA.stoc||[]).forEach(function(s){if(s.cantitate>0)stocCostMap[s.denumire]=s.valoare/s.cantitate;});
+        var stocCostMap2={};
+        (WINMENTOR_DATA.stoc||[]).forEach(function(s){if(s.cantitate>0)stocCostMap2[s.denumire]=s.valoare/s.cantitate;});
+        var consumCostMap2={};
+        if(WINMENTOR_DATA.consumuri){
+            var luniC2=(lunaFilter==='all'||!WINMENTOR_DATA.consumuri[lunaFilter])?Object.keys(WINMENTOR_DATA.consumuri):[lunaFilter];
+            var consumAgg2={};
+            luniC2.forEach(function(l){var ld=WINMENTOR_DATA.consumuri[l]||{};for(var p in ld){if(!consumAgg2[p])consumAgg2[p]={cantitate:0,cost_total:0};consumAgg2[p].cantitate+=ld[p].cantitate||0;consumAgg2[p].cost_total+=ld[p].cost_total||0;}});
+            for(var p in consumAgg2){if(consumAgg2[p].cantitate>0)consumCostMap2[p]=consumAgg2[p].cost_total/consumAgg2[p].cantitate;}
+        }
+        function findCostPnl(artName){
+            var artUp=artName.toUpperCase();
+            for(var cp in consumCostMap2){var cUp=cp.toUpperCase();
+                if(artUp.indexOf(cUp)!==-1||cUp.indexOf(artUp)!==-1)return consumCostMap2[cp];
+                var cW=cUp.split(/\s+/);var mc=0;for(var w=0;w<cW.length;w++){if(cW[w].length>2&&artUp.indexOf(cW[w])!==-1)mc++;}
+                if(cW.length>0&&mc>=Math.max(2,cW.length*0.6))return consumCostMap2[cp];
+            }return stocCostMap2[artName]||0;
+        }
         var costProdPerCh={};channels.forEach(function(c){costProdPerCh[c]=0;});
         vanzari.forEach(function(v){
             var td=(v.tip_doc||'').toString();if(td!=='19'&&td!=='22'&&td!=='26')return;
             var d=v.data||'';var im=parseInt(d.substring(5,7));
             if(lunaFilter!=='all'&&im!==parseInt(lunaFilter))return;
             var s=v.serie||'';if(!s||!costProdPerCh.hasOwnProperty(s))return;
-            costProdPerCh[s]+=(stocCostMap[v.articol]||0)*(v.cantitate||0);
+            costProdPerCh[s]+=findCostPnl(v.articol)*(v.cantitate||0);
         });
         function getAl(channel,cats){var t=0;cats.forEach(function(cat){if(alocare[cat]&&alocare[cat].channels&&alocare[cat].channels[channel])t+=alocare[cat].channels[channel];});return t;}
         function getGen(cats){var t=0;cats.forEach(function(cat){if(alocare[cat]&&alocare[cat].general)t+=alocare[cat].general;});return t;}

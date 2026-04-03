@@ -1,9 +1,9 @@
-﻿// Generat automat din Paradox DB - 2026-04-03 08:37:38
+﻿// Generat automat din Paradox DB - 2026-04-03 08:39:55
 var WINMENTOR_DATA = {
     meta: {
         firma: "IDI25",
         metoda: "Paradox DB (IESIRI+IESIRI1+NART)",
-        data_extragere: "03.04.2026 08:37:38",
+        data_extragere: "03.04.2026 08:39:55",
         an: 2026,
         luna: 3,
         luni_vanzari: 3

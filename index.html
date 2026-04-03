@@ -870,18 +870,19 @@
         var cheltuieliIndirecte=ch.total_cheltuieli_op||0;
         recalcCantPerCanal(lunaFilter);
         var costPerBuc=0;
-        if(typeof ALOCARE_DATA!=='undefined'){
+        var _hasAlocare=typeof ALOCARE_DATA!=='undefined'&&Object.keys(ALOCARE_DATA).length>0;
+        if(_hasAlocare){
             var _luniAl=(lunaFilter==='all'||!ALOCARE_DATA[lunaFilter])?Object.keys(ALOCARE_DATA):[lunaFilter];
             var _nrLuni=_luniAl.length;var _totalChAlocat=0;
             _luniAl.forEach(function(l){var al=ALOCARE_DATA[l]||{};for(var c in al){if(al[c].channels){for(var ch2 in al[c].channels)_totalChAlocat+=al[c].channels[ch2];}if(al[c].general)_totalChAlocat+=al[c].general;}});
             var _useFb=(lunaFilter!=='all'&&!ALOCARE_DATA[lunaFilter]);
-            var _chMediu=_useFb?_totalChAlocat/_nrLuni:_totalChAlocat;
+            var _chMediu=(_useFb&&_nrLuni>0)?_totalChAlocat/_nrLuni:_totalChAlocat;
             if(canalFilter!=='all'){
                 var _chCanal=0,_chGen=0;
                 _luniAl.forEach(function(l){var al=ALOCARE_DATA[l]||{};for(var c in al){if(al[c].channels&&al[c].channels[canalFilter])_chCanal+=al[c].channels[canalFilter];if(al[c].general)_chGen+=al[c].general;}});
-                if(_useFb){_chCanal=_chCanal/_nrLuni;_chGen=_chGen/_nrLuni;}
+                if(_useFb&&_nrLuni>0){_chCanal=_chCanal/_nrLuni;_chGen=_chGen/_nrLuni;}
                 var _cantCanal=cantPerCanal[canalFilter]||totalCantAll;
-                costPerBuc=(_chCanal/_cantCanal)+(_chGen/(totalCantAllForGeneral||1));
+                costPerBuc=_cantCanal>0?(_chCanal/_cantCanal)+(_chGen/(totalCantAllForGeneral||1)):0;
             }else{costPerBuc=totalCantAll>0?_chMediu/totalCantAll:0;}
         }else{
             if(cheltuieliIndirecte<0)cheltuieliIndirecte=0;
@@ -916,7 +917,7 @@
         var sumEl=document.getElementById('summaryProfit');
         if(sumEl){
             var cLabel=canalFilter!=='all'?' ['+canalFilter+']':'';
-            var costSrc=canalFilter!=='all'&&typeof ALOCARE_DATA!=='undefined'?' (alocat)':' (total)';
+            var costSrc=canalFilter!=='all'&&_hasAlocare?' (alocat)':' (total)';
             sumEl.innerHTML=data.length+' produse'+cLabel+' | Venituri: '+fmt(totVen)+' | <span style="color:'+(totProf>=0?'#22c55e':'#ef4444')+';font-weight:700;">Profit: '+fmt(totProf)+' ('+totMarj.toFixed(1)+'%)</span> | Cost indirect/buc: '+fmt(Math.round(costPerBuc*100)/100)+costSrc;
         }
         var tp=Math.ceil(data.length/profitPS)||1;if(profitPage>=tp)profitPage=tp-1;
@@ -948,7 +949,7 @@
     }
 
     function calcCostPerBucCanal(canal,cantCanal,lunaFilter){
-        if(!cantCanal||cantCanal<=0)return 0;if(typeof ALOCARE_DATA==='undefined')return 0;
+        if(!cantCanal||cantCanal<=0)return 0;if(typeof ALOCARE_DATA==='undefined'||Object.keys(ALOCARE_DATA).length===0)return 0;
         var _fb=(lunaFilter!=='all'&&!ALOCARE_DATA[lunaFilter]);
         var luniAl=(lunaFilter==='all'||_fb)?Object.keys(ALOCARE_DATA):[lunaFilter];
         var chCanal=0;
@@ -958,7 +959,7 @@
     }
 
     function calcCostGeneralPerBuc(totalCant,lunaFilter){
-        if(!totalCant||totalCant<=0)return 0;if(typeof ALOCARE_DATA==='undefined')return 0;
+        if(!totalCant||totalCant<=0)return 0;if(typeof ALOCARE_DATA==='undefined'||Object.keys(ALOCARE_DATA).length===0)return 0;
         var _fb=(lunaFilter!=='all'&&!ALOCARE_DATA[lunaFilter]);
         var luniAl=(lunaFilter==='all'||_fb)?Object.keys(ALOCARE_DATA):[lunaFilter];
         var chGen=0;

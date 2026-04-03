@@ -1,16 +1,16 @@
-﻿// Generat automat din Paradox DB - 2026-04-03 09:29:44
+﻿// Generat automat din Paradox DB - 2026-04-03 09:32:05
 var WINMENTOR_DATA = {
     meta: {
         firma: "IDI25",
         metoda: "Paradox DB (IESIRI+IESIRI1+NART)",
-        data_extragere: "03.04.2026 09:29:44",
+        data_extragere: "03.04.2026 09:32:05",
         an: 2026,
         luna: 4,
         luni_vanzari: 4
     },
     sumar: {
-        total_stoc_valoare: 470869,
-        total_vanzari: 1520284.4,
+        total_stoc_valoare: 470810.79,
+        total_vanzari: 1520333.4,
         total_restante: 1579469.34
     },
     vanzari: [
@@ -16476,7 +16476,13 @@ var WINMENTOR_DATA = {
         { "tip_doc": "19", "data": "2026-04-03", "factura": "12556", "client": "MARIA TOTH", "cod_fiscal": "", "articol": "CIOCOLATA NEAGRA 70% CACAO CU VISINE SI VISINATA RAZVAN 80G", "serie": "WEB", "cantitate": 1, "valoare": 29.48, "tva": 6.19 },
         { "tip_doc": "19", "data": "2026-04-03", "factura": "12556", "client": "MARIA TOTH", "cod_fiscal": "", "articol": "CIOCOLATA NEAGRA 70% CACAO CU PRUNE SI PALINCA RAZVAN 80G", "serie": "WEB", "cantitate": 1, "valoare": 29.48, "tva": 6.19 },
         { "tip_doc": "19", "data": "2026-04-03", "factura": "12556", "client": "MARIA TOTH", "cod_fiscal": "", "articol": "CUTIE CARTON 12 BORCANE 0217 CO5 GIFTING", "serie": "WEB", "cantitate": 1, "valoare": 25.26, "tva": 5.31 },
-        { "tip_doc": "19", "data": "2026-04-03", "factura": "12556", "client": "MARIA TOTH", "cod_fiscal": "", "articol": "RAZVAN MUSTAR GROZAV CU HREAN 310G", "serie": "WEB", "cantitate": 1, "valoare": 13.77, "tva": 1.52 }
+        { "tip_doc": "19", "data": "2026-04-03", "factura": "12556", "client": "MARIA TOTH", "cod_fiscal": "", "articol": "RAZVAN MUSTAR GROZAV CU HREAN 310G", "serie": "WEB", "cantitate": 1, "valoare": 13.77, "tva": 1.52 },
+        { "tip_doc": "22", "data": "2026-04-03", "factura": "2524", "client": "ADRIAN DUMITRU", "cod_fiscal": "", "articol": "DULCEATA DE MACESE 450GR", "serie": "GLO", "cantitate": 1, "valoare": 8.48, "tva": 0.51 },
+        { "tip_doc": "22", "data": "2026-04-03", "factura": "2524", "client": "ADRIAN DUMITRU", "cod_fiscal": "", "articol": "MIERE CRUDA DE SALCAM RAZVAN 450GR", "serie": "GLO", "cantitate": 1, "valoare": 9.42, "tva": 0.57 },
+        { "tip_doc": "22", "data": "2026-04-03", "factura": "2524", "client": "ADRIAN DUMITRU", "cod_fiscal": "", "articol": "Zacusca la ceaun cu fasole - Razvan Idicel - 350g", "serie": "GLO", "cantitate": 1, "valoare": 7.54, "tva": 0.45 },
+        { "tip_doc": "22", "data": "2026-04-03", "factura": "2524", "client": "ADRIAN DUMITRU", "cod_fiscal": "", "articol": "ZACUSCA LA CEAUN PICANTA RAZVAN 350G", "serie": "GLO", "cantitate": 1, "valoare": 8.48, "tva": 0.51 },
+        { "tip_doc": "22", "data": "2026-04-03", "factura": "2524", "client": "ADRIAN DUMITRU", "cod_fiscal": "", "articol": "ZACUSCA LA CEAUN CU GHEBE RAZVAN 350G", "serie": "GLO", "cantitate": 1, "valoare": 7.54, "tva": 0.45 },
+        { "tip_doc": "22", "data": "2026-04-03", "factura": "2524", "client": "ADRIAN DUMITRU", "cod_fiscal": "", "articol": "ZACUSCA DE VINETE RAZVAN 350G (BORCAN)", "serie": "GLO", "cantitate": 1, "valoare": 7.54, "tva": 0.45 }
     ],
     stoc: [
         { "cod": "", "denumire": "Miere FLORI DE MUNTE ECO Kg", "um": "Kg", "cantitate": 210.6, "valoare": 7628.4, "gestiune": "DEPOZIT CENTRAL", "tip": "Materii prime" },
@@ -16485,7 +16491,7 @@ var WINMENTOR_DATA = {
         { "cod": "", "denumire": "INV/000014 - MOBILIER DE EXTERIOR (CARUTA CLATITE)", "um": "Buc", "cantitate": 1, "valoare": 20000, "gestiune": "DEPOZIT CENTRAL", "tip": "Obiecte inventar" },
         { "cod": "", "denumire": "SERVICII LICENTIERE CSP CLOUD - MICROSOFT 365", "um": "Buc", "cantitate": 1, "valoare": 1546.97, "gestiune": "DEPOZIT CENTRAL", "tip": "Imobilizari" },
         { "cod": "", "denumire": "MASINA DE SPALAT, MODEL \"KROMO HOOD 800T DA\"", "um": "Buc", "cantitate": 1, "valoare": 18594.2, "gestiune": "DEPOZIT CENTRAL", "tip": "Obiecte inventar" },
-        { "cod": "5941891401208", "denumire": "Zacusca la ceaun cu fasole - Razvan Idicel - 350g", "um": "Buc", "cantitate": 1332, "valoare": 8962.64, "gestiune": "DEPOZIT CENTRAL, MAGAZIN_", "tip": "Produse finite" },
+        { "cod": "5941891401208", "denumire": "Zacusca la ceaun cu fasole - Razvan Idicel - 350g", "um": "Buc", "cantitate": 1331, "valoare": 8956, "gestiune": "DEPOZIT CENTRAL, MAGAZIN_", "tip": "Produse finite" },
         { "cod": "", "denumire": "PLASA HARTIE", "um": "Buc", "cantitate": 2101, "valoare": 0, "gestiune": "MAGAZIN_", "tip": "Altele (...)" },
         { "cod": "", "denumire": "GRATAR 1000*2000", "um": "Buc", "cantitate": 1, "valoare": 6000, "gestiune": "DEPOZIT CENTRAL", "tip": "Obiecte inventar" },
         { "cod": "5941891400928", "denumire": "RAZVAN MUSTAR GROZAV CLASIC 310G", "um": "Buc", "cantitate": 1741, "valoare": 6090.3, "gestiune": "DEPOZIT CENTRAL, MAGAZIN_", "tip": "Produse finite" },
@@ -16519,7 +16525,7 @@ var WINMENTOR_DATA = {
         { "cod": "", "denumire": "BORCAN HEXAGONAL 50ML", "um": "Buc", "cantitate": 1630, "valoare": 1543.99, "gestiune": "DEPOZIT CENTRAL", "tip": "Ambalaje" },
         { "cod": "5941891400539", "denumire": "SALATA DE VINETE RAZVAN 340G", "um": "Buc", "cantitate": 843, "valoare": 4699.28, "gestiune": "DEPOZIT CENTRAL, MAGAZIN_", "tip": "Produse finite" },
         { "cod": "", "denumire": "BORCAN 106ML PREZIOSO", "um": "Buc", "cantitate": 700, "valoare": 748, "gestiune": "DEPOZIT CENTRAL", "tip": "Ambalaje" },
-        { "cod": "5941891401062", "denumire": "MIERE CRUDA DE SALCAM RAZVAN 450GR", "um": "Buc", "cantitate": 717, "valoare": 17161.59, "gestiune": "DEPOZIT CENTRAL, MAGAZIN_", "tip": "Marfuri" },
+        { "cod": "5941891401062", "denumire": "MIERE CRUDA DE SALCAM RAZVAN 450GR", "um": "Buc", "cantitate": 716, "valoare": 17137.94, "gestiune": "DEPOZIT CENTRAL, MAGAZIN_", "tip": "Marfuri" },
         { "cod": "5940628852047", "denumire": "SIROP DE MENTA 750ML", "um": "Buc", "cantitate": 4, "valoare": 239.96, "gestiune": "MAGAZIN_", "tip": "Produse finite" },
         { "cod": "6422902000843", "denumire": "DULCEATA DE MURE RAZVAN 380G", "um": "Buc", "cantitate": 728, "valoare": 6115.45, "gestiune": "DEPOZIT CENTRAL, MAGAZIN_", "tip": "Produse finite" },
         { "cod": "6422902000799", "denumire": "CIOCOLATA SAVARSIN 70% CACAO CU VISINE 80G (TABLETA)", "um": "Buc", "cantitate": 35, "valoare": -125.6, "gestiune": "DEPOZIT CENTRAL, MAGAZIN_", "tip": "Produse finite" },
@@ -16602,7 +16608,7 @@ var WINMENTOR_DATA = {
         { "cod": "", "denumire": "ETICHETA MIERE CURAD FLORI DE MUNTE 450G", "um": "Buc", "cantitate": 2500, "valoare": 1847.18, "gestiune": "DEPOZIT CENTRAL", "tip": "Ambalaje" },
         { "cod": "", "denumire": "CUTIE CIOCOLATA FISTIC 80G (S)", "um": "Buc", "cantitate": 2363, "valoare": 3285.78, "gestiune": "DEPOZIT CENTRAL, LABORATOR CIOCOLATA", "tip": "Ambalaje" },
         { "cod": "", "denumire": "Seminte Castraveti Prut F1 30buc.", "um": "Buc", "cantitate": 117, "valoare": 1797.9, "gestiune": "DEPOZIT CENTRAL, MAGAZIN_", "tip": "Marfuri" },
-        { "cod": "5941891400553", "denumire": "ZACUSCA LA CEAUN PICANTA RAZVAN 350G", "um": "Buc", "cantitate": 1558, "valoare": 12070.54, "gestiune": "DEPOZIT CENTRAL, MAGAZIN_", "tip": "Produse finite" },
+        { "cod": "5941891400553", "denumire": "ZACUSCA LA CEAUN PICANTA RAZVAN 350G", "um": "Buc", "cantitate": 1557, "valoare": 12063.2, "gestiune": "DEPOZIT CENTRAL, MAGAZIN_", "tip": "Produse finite" },
         { "cod": "", "denumire": "CUTIE CARTON PENTRU 18 BORCANE", "um": "Buc", "cantitate": 1620, "valoare": 4406.4, "gestiune": "DEPOZIT CENTRAL", "tip": "Ambalaje" },
         { "cod": "", "denumire": "PACHET TRIO DULCEATA +1 BORCAN CADOU 1520G", "um": "Buc", "cantitate": 15, "valoare": 744.96, "gestiune": "DEPOZIT CENTRAL, MAGAZIN_", "tip": "Produse finite" },
         { "cod": "", "denumire": "CUTIE CEAI MUSETEL SI POLEN (S)", "um": "Buc", "cantitate": 1000, "valoare": 4978, "gestiune": "DEPOZIT CENTRAL", "tip": "Ambalaje" },
@@ -16671,7 +16677,7 @@ var WINMENTOR_DATA = {
         { "cod": "5940541789031", "denumire": "Tahini Alb 350g", "um": "Buc", "cantitate": 3, "valoare": 89.97, "gestiune": "MAGAZIN_", "tip": "Marfuri" },
         { "cod": "5941891401109", "denumire": "CEAI ZAMBETUL SOARELUI(PIERSICA SI FLOAREA SOARELUI)", "um": "Buc", "cantitate": 22, "valoare": 239.98, "gestiune": "DEPOZIT CENTRAL, MAGAZIN_", "tip": "Produse finite" },
         { "cod": "", "denumire": "IMPRIMANTA", "um": "Buc", "cantitate": 1, "valoare": 432.77, "gestiune": "DEPOZIT CENTRAL", "tip": "Obiecte inventar" },
-        { "cod": "5941891401192", "denumire": "DULCEATA DE MACESE 450GR", "um": "Buc", "cantitate": 3255, "valoare": 28968.41, "gestiune": "DEPOZIT CENTRAL, FABRICA IDICEL, MAGAZIN_", "tip": "Produse finite" },
+        { "cod": "5941891401192", "denumire": "DULCEATA DE MACESE 450GR", "um": "Buc", "cantitate": 3254, "valoare": 28960.33, "gestiune": "DEPOZIT CENTRAL, FABRICA IDICEL, MAGAZIN_", "tip": "Produse finite" },
         { "cod": "5941891400812", "denumire": "SILVOIZ DE PRUNE LA CEAUN FARA ZAHAR RAZVAN 380G", "um": "Buc", "cantitate": 178, "valoare": 1656.96, "gestiune": "DEPOZIT CENTRAL, MAGAZIN_", "tip": "Produse finite" },
         { "cod": "", "denumire": "INV/000001 - FRIGIDER", "um": "Buc", "cantitate": 1, "valoare": 3443.69, "gestiune": "DEPOZIT CENTRAL", "tip": "Obiecte inventar" },
         { "cod": "", "denumire": "PIXIE D62 EU SILVER NESPRESSO", "um": "Buc", "cantitate": 1, "valoare": 452.13, "gestiune": "DEPOZIT CENTRAL", "tip": "Obiecte inventar" },
@@ -16744,7 +16750,7 @@ var WINMENTOR_DATA = {
         { "cod": "", "denumire": "PLATFORMA TERASE", "um": "Buc", "cantitate": 3, "valoare": 12000, "gestiune": "MAGAZIN_", "tip": "Obiecte inventar" },
         { "cod": "", "denumire": "DB409-1 AMEF DP25 MX AUTORIZATIE DE DISTRIBUTIE AMEF NR.142/10.11.2021", "um": "Buc", "cantitate": 1, "valoare": 825.62, "gestiune": "DEPOZIT CENTRAL", "tip": "Obiecte inventar" },
         { "cod": "5941977901769", "denumire": "LILIAC RED CUVEE 0.75", "um": "Buc", "cantitate": 5, "valoare": 462.89, "gestiune": "MAGAZIN_", "tip": "Produse finite" },
-        { "cod": "5941891400546", "denumire": "ZACUSCA LA CEAUN CU GHEBE RAZVAN 350G", "um": "Buc", "cantitate": 2123, "valoare": 14512.68, "gestiune": "DEPOZIT CENTRAL, MAGAZIN_", "tip": "Produse finite" },
+        { "cod": "5941891400546", "denumire": "ZACUSCA LA CEAUN CU GHEBE RAZVAN 350G", "um": "Buc", "cantitate": 2122, "valoare": 14506.31, "gestiune": "DEPOZIT CENTRAL, MAGAZIN_", "tip": "Produse finite" },
         { "cod": "", "denumire": "LICENTA PROGRAM", "um": "Buc", "cantitate": 8, "valoare": 3108.19, "gestiune": "DEPOZIT CENTRAL", "tip": "Imobilizari" },
         { "cod": "", "denumire": "CUTIE CARTON 12 BORCANE 0217 CO5 GIFTING", "um": "Buc", "cantitate": 2110, "valoare": 7406.1, "gestiune": "DEPOZIT CENTRAL", "tip": "Ambalaje" },
         { "cod": "5941891400515", "denumire": "SALATA DE ARDEI CAPIA RAZVAN 320G", "um": "Buc", "cantitate": 455, "valoare": 6023.95, "gestiune": "DEPOZIT CENTRAL, MAGAZIN_", "tip": "Produse finite" },
@@ -16761,7 +16767,7 @@ var WINMENTOR_DATA = {
         { "cod": "", "denumire": "CUTIE CIOCOLATA 40 G - CIRESE AMARE&VISINATA", "um": "Buc", "cantitate": 2144, "valoare": 728.96, "gestiune": "DEPOZIT CENTRAL", "tip": "Ambalaje" },
         { "cod": "", "denumire": "SISTEM SUPRAVEGHERE VIDEO", "um": "Buc", "cantitate": 2, "valoare": 3888.89, "gestiune": "DEPOZIT CENTRAL", "tip": "Obiecte inventar" },
         { "cod": "", "denumire": "MARTISOR CERAMICA", "um": "Buc", "cantitate": 9, "valoare": 270, "gestiune": "MAGAZIN_", "tip": "Produse finite" },
-        { "cod": "5941891400522", "denumire": "ZACUSCA DE VINETE RAZVAN 350G (BORCAN)", "um": "Buc", "cantitate": 71, "valoare": 2078.83, "gestiune": "DEPOZIT CENTRAL, MAGAZIN_", "tip": "Produse finite" },
+        { "cod": "5941891400522", "denumire": "ZACUSCA DE VINETE RAZVAN 350G (BORCAN)", "um": "Buc", "cantitate": 70, "valoare": 2072.7, "gestiune": "DEPOZIT CENTRAL, MAGAZIN_", "tip": "Produse finite" },
         { "cod": "", "denumire": "C512634 IMODULE II SUPER BOLTMARK GERMANIA", "um": "Buc", "cantitate": 1, "valoare": 2970, "gestiune": "DEPOZIT CENTRAL", "tip": "Obiecte inventar" },
         { "cod": "5941977901721", "denumire": "VIN LILIAC FETEASCA ALBA 0.75L", "um": "Buc", "cantitate": 5, "valoare": 249.95, "gestiune": "MAGAZIN_", "tip": "Marfuri" },
         { "cod": "", "denumire": "CUTIE CIOCOLATA ALUNE 80G (S)", "um": "Buc", "cantitate": 2901, "valoare": 4262.96, "gestiune": "DEPOZIT CENTRAL, LABORATOR CIOCOLATA", "tip": "Ambalaje" },
@@ -17064,8 +17070,8 @@ var WINMENTOR_DATA = {
     balanta: [
         { "simbol": "301", "denumire": "Materii prime", "curent_d": 0, "curent_c": 11119.38 },
         { "simbol": "302.03", "denumire": "Materiale pentru ambalat", "curent_d": 0, "curent_c": 3551.24 },
-        { "simbol": "345", "denumire": "Produse finite", "curent_d": 15106.35, "curent_c": 37268.75 },
-        { "simbol": "371.01", "denumire": "Marfuri in depozit", "curent_d": 0, "curent_c": 2867.55 },
+        { "simbol": "345", "denumire": "Produse finite", "curent_d": 15106.35, "curent_c": 37303.31 },
+        { "simbol": "371.01", "denumire": "Marfuri in depozit", "curent_d": 0, "curent_c": 2891.2 },
         { "simbol": "371.02", "denumire": "Marfuri in magazin", "curent_d": 8588.78, "curent_c": 1654.61 },
         { "simbol": "378.02", "denumire": "Diferente de pret la marfuri in magazin", "curent_d": 926.51, "curent_c": 3949.87 },
         { "simbol": "381", "denumire": "Ambalaje", "curent_d": 0, "curent_c": 125 },
@@ -17074,16 +17080,16 @@ var WINMENTOR_DATA = {
         { "simbol": "531.01", "denumire": "Casa in lei", "curent_d": 342.87, "curent_c": 0 },
         { "simbol": "601", "denumire": "Cheltuieli cu materiile prime", "curent_d": 11119.38, "curent_c": 0 },
         { "simbol": "602.03", "denumire": "Cheltuieli privind materialele pentru ambalat", "curent_d": 3551.24, "curent_c": 0 },
-        { "simbol": "607", "denumire": "Cheltuieli privind marfurile", "curent_d": 3073, "curent_c": 0 },
+        { "simbol": "607", "denumire": "Cheltuieli privind marfurile", "curent_d": 3096.65, "curent_c": 0 },
         { "simbol": "608", "denumire": "Cheltuieli privind ambalajele", "curent_d": 125, "curent_c": 0 },
-        { "simbol": "707", "denumire": "Venituri din vanzarea marfurilor", "curent_d": 0, "curent_c": 5114.58 },
-        { "simbol": "708", "denumire": "Venituri din activitati diverse", "curent_d": 0, "curent_c": 2240.72 },
-        { "simbol": "711", "denumire": "Venituri aferente costurilor stocurilor de produse", "curent_d": 34087.19, "curent_c": 15106.35 },
-        { "simbol": "411.01", "denumire": "Clienti", "curent_d": 57615.4, "curent_c": 1220.16 },
+        { "simbol": "707", "denumire": "Venituri din vanzarea marfurilor", "curent_d": 0, "curent_c": 5162.61 },
+        { "simbol": "708", "denumire": "Venituri din activitati diverse", "curent_d": 0, "curent_c": 2282.83 },
+        { "simbol": "711", "denumire": "Venituri aferente costurilor stocurilor de produse", "curent_d": 34121.75, "curent_c": 15106.35 },
+        { "simbol": "411.01", "denumire": "Clienti", "curent_d": 57931.15, "curent_c": 1220.16 },
         { "simbol": "709", "denumire": "Reduceri comerciale acordate", "curent_d": 1220.16, "curent_c": 0 },
-        { "simbol": "701.05", "denumire": "Venituri din vanzarea produselor finite", "curent_d": 0, "curent_c": 108259.24 },
+        { "simbol": "701.05", "denumire": "Venituri din vanzarea produselor finite", "curent_d": 0, "curent_c": 108461.04 },
         { "simbol": "461.01", "denumire": "Garantie SGR", "curent_d": 0, "curent_c": 35 },
-        { "simbol": "446.04", "denumire": "Alte impozite, taxe ?i varsaminte asimilate TVA - OSS", "curent_d": 0, "curent_c": 961.39 },
+        { "simbol": "446.04", "denumire": "Alte impozite, taxe ?i varsaminte asimilate TVA - OSS", "curent_d": 0, "curent_c": 985.2 },
         { "simbol": "473.02", "denumire": "Decontari din operatiuni in curs de clarificare- pachete", "curent_d": 11.81, "curent_c": 0 },
         { "simbol": "442.08.01", "denumire": "TVA neexigibila marfa", "curent_d": 227.04, "curent_c": 9024.86 },
         { "simbol": "512.05.01", "denumire": "Sume în curs de decontare", "curent_d": 1180.67, "curent_c": 0 }
@@ -17091,8 +17097,8 @@ var WINMENTOR_DATA = {
     balanta_lunara: [
         { "luna": 1, "an": 2026, "cifra_afaceri": 830775.69, "cifra_afaceri_cumulat": 830775.69, "ca_701_708_credit": 861225.75, "ca_709_debit": 30450.06, "venituri_produse": 818860.07, "venituri_marfuri": 24663.02, "venituri_diverse": 17702.66, "reduceri": 30450.06, "ch_materii_prime": 206698.11, "ch_materiale": 58260.58, "ch_materiale_nestocate": 8259.75, "ch_obiecte_inventar": 1408.25, "ch_energie": 6737.51, "ch_cost_marfuri": 10920.57, "ch_ambalaje": 3968.41, "ch_discount_primite": -332.13, "ch_intretinere": 508.11, "ch_chirii": 21743.59, "ch_asigurari": 0, "ch_colaboratori": 0, "ch_comisioane": 0, "ch_publicitate": 72540.21, "ch_transport": 75487.68, "ch_deplasari": 10217.86, "ch_posta_telecom": 404.04, "ch_servicii_bancare": 10407.27, "ch_alte_servicii": 44057.73, "ch_taxe": 3949.82, "ch_salarii": 85167, "ch_asig_sociale": 9170, "ch_tichete": 0, "ch_dif_curs": 2240.9, "ch_dobanzi": 8074.23, "ch_amortizare": 20228.07, "ch_alte_exploatare": 6317.07, "ch_pierderi_creante": 0, "ch_protocol": 0, "venituri_productie": 0, "total_cheltuieli": 666434.63 },
         { "luna": 2, "an": 2026, "cifra_afaceri": 948482.3, "cifra_afaceri_cumulat": 1779257.99, "ca_701_708_credit": 1000510.07, "ca_709_debit": 52027.77, "venituri_produse": 945890.8, "venituri_marfuri": 31305.24, "venituri_diverse": 23314.03, "reduceri": 52027.77, "ch_materii_prime": 254122.48, "ch_materiale": 101718.78, "ch_materiale_nestocate": 2035.34, "ch_obiecte_inventar": 0, "ch_energie": 8885.27, "ch_cost_marfuri": 17204.85, "ch_ambalaje": 30160.41, "ch_discount_primite": 1150.06, "ch_intretinere": 9791.28, "ch_chirii": 22004.92, "ch_asigurari": 86.47, "ch_colaboratori": 0, "ch_comisioane": 0, "ch_publicitate": 95385.65, "ch_transport": 82411.2, "ch_deplasari": 2159.14, "ch_posta_telecom": 414.04, "ch_servicii_bancare": 8099.82, "ch_alte_servicii": 36031.11, "ch_taxe": 1941.97, "ch_salarii": 82815, "ch_asig_sociale": 8570, "ch_tichete": 0, "ch_dif_curs": 3070.08, "ch_dobanzi": 7380.32, "ch_amortizare": 20228.06, "ch_alte_exploatare": 2386.26, "ch_pierderi_creante": 0, "ch_protocol": 0, "venituri_productie": 0, "total_cheltuieli": 798052.51 },
-        { "luna": 3, "an": 2026, "cifra_afaceri": 975582.05, "cifra_afaceri_cumulat": 2754840.04, "ca_701_708_credit": 1001684.15, "ca_709_debit": 26102.1, "venituri_produse": 983338.66, "venituri_marfuri": 57589.73, "venituri_diverse": -39244.24, "reduceri": 26102.1, "ch_materii_prime": 173806.23, "ch_materiale": 61970.5, "ch_materiale_nestocate": 6135.82, "ch_obiecte_inventar": 0, "ch_energie": 2876.21, "ch_cost_marfuri": 25762, "ch_ambalaje": 1746.27, "ch_discount_primite": 446.03, "ch_intretinere": 19488.02, "ch_chirii": 42711.16, "ch_asigurari": 0, "ch_colaboratori": 0, "ch_comisioane": 0, "ch_publicitate": 4984.63, "ch_transport": 31223.97, "ch_deplasari": 7517.59, "ch_posta_telecom": 443.14, "ch_servicii_bancare": 0, "ch_alte_servicii": 31608.16, "ch_taxe": 4320.71, "ch_salarii": 0, "ch_asig_sociale": 10950, "ch_tichete": 0, "ch_dif_curs": 0, "ch_dobanzi": 0, "ch_amortizare": 0, "ch_alte_exploatare": 741.17, "ch_pierderi_creante": 0, "ch_protocol": 0, "venituri_productie": 55572.88, "total_cheltuieli": 426285.58 },
-        { "luna": 4, "an": 2026, "cifra_afaceri": 554400.04, "cifra_afaceri_cumulat": 3309240.08, "ca_701_708_credit": 562602.87, "ca_709_debit": 8202.83, "venituri_produse": 525126.99, "venituri_marfuri": 14027.61, "venituri_diverse": 23448.27, "reduceri": 8202.83, "ch_materii_prime": 180407.9, "ch_materiale": 41368.11, "ch_materiale_nestocate": -289.34, "ch_obiecte_inventar": 0, "ch_energie": -1066.11, "ch_cost_marfuri": 11147.05, "ch_ambalaje": 14841.36, "ch_discount_primite": 55.3, "ch_intretinere": -674.17, "ch_chirii": 0, "ch_asigurari": 0, "ch_colaboratori": 0, "ch_comisioane": 0, "ch_publicitate": 0, "ch_transport": -31.4, "ch_deplasari": 0, "ch_posta_telecom": 0, "ch_servicii_bancare": 19256.98, "ch_alte_servicii": 1491.28, "ch_taxe": 0, "ch_salarii": 51042, "ch_asig_sociale": 0, "ch_tichete": 0, "ch_dif_curs": 15924.68, "ch_dobanzi": 2289.75, "ch_amortizare": 20157.23, "ch_alte_exploatare": 39070, "ch_pierderi_creante": 0, "ch_protocol": 0, "venituri_productie": -74553.72, "total_cheltuieli": 395436.65 }
+        { "luna": 3, "an": 2026, "cifra_afaceri": 1148043.12, "cifra_afaceri_cumulat": 2927301.11, "ca_701_708_credit": 1178220.72, "ca_709_debit": 30177.6, "venituri_produse": 1154002.62, "venituri_marfuri": 60489.06, "venituri_diverse": -36270.96, "reduceri": 30177.6, "ch_materii_prime": 243402.56, "ch_materiale": 81208.74, "ch_materiale_nestocate": 6135.82, "ch_obiecte_inventar": 0, "ch_energie": 2876.21, "ch_cost_marfuri": 30484.34, "ch_ambalaje": 15991.83, "ch_discount_primite": 501.33, "ch_intretinere": 19488.02, "ch_chirii": 42711.16, "ch_asigurari": 0, "ch_colaboratori": 0, "ch_comisioane": 0, "ch_publicitate": 4984.63, "ch_transport": 31223.97, "ch_deplasari": 7517.59, "ch_posta_telecom": 443.14, "ch_servicii_bancare": 0, "ch_alte_servicii": 31608.16, "ch_taxe": 4320.71, "ch_salarii": 0, "ch_asig_sociale": 10950, "ch_tichete": 0, "ch_dif_curs": 0, "ch_dobanzi": 0, "ch_amortizare": 0, "ch_alte_exploatare": 741.17, "ch_pierderi_creante": 0, "ch_protocol": 0, "venituri_productie": -9611.5, "total_cheltuieli": 534088.05 },
+        { "luna": 4, "an": 2026, "cifra_afaceri": 382230.91, "cifra_afaceri_cumulat": 3309532.02, "ca_701_708_credit": 386358.24, "ca_709_debit": 4127.33, "venituri_produse": 354664.83, "venituri_marfuri": 11176.31, "venituri_diverse": 20517.1, "reduceri": 4127.33, "ch_materii_prime": 110811.57, "ch_materiale": 22129.87, "ch_materiale_nestocate": -289.34, "ch_obiecte_inventar": 0, "ch_energie": -1066.11, "ch_cost_marfuri": 6448.36, "ch_ambalaje": 595.8, "ch_discount_primite": 0, "ch_intretinere": -674.17, "ch_chirii": 0, "ch_asigurari": 0, "ch_colaboratori": 0, "ch_comisioane": 0, "ch_publicitate": 0, "ch_transport": -31.4, "ch_deplasari": 0, "ch_posta_telecom": 0, "ch_servicii_bancare": 19256.98, "ch_alte_servicii": 1491.28, "ch_taxe": 0, "ch_salarii": 51042, "ch_asig_sociale": 0, "ch_tichete": 0, "ch_dif_curs": 15924.68, "ch_dobanzi": 2289.75, "ch_amortizare": 20157.23, "ch_alte_exploatare": 39070, "ch_pierderi_creante": 0, "ch_protocol": 0, "venituri_productie": -9403.9, "total_cheltuieli": 287657.83 }
     ],
     monetar_zile: [
         { "zi": 1, "nrDoc": "267", "valoare": 965.73, "discount": 116.97, "tvaDiscount": 12.71, "nrBonuri": 8 },

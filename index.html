@@ -926,11 +926,10 @@
         page.forEach(function(item,idx){
             var rowId='profitRow_'+(profitPage*profitPS+idx);
             var serii=profitSerieMap[item.articol]||{};var serieKeys=Object.keys(serii);
-            var hasMS=serieKeys.length>1||(serieKeys.length===1&&serieKeys[0]!=='FARA SERIE');
-            var row=tbody.insertRow();row.id=rowId;row.style.cursor=hasMS?'pointer':'default';
-            if(hasMS)row.onclick=(function(r,a,c){return function(){toggleProfitSerie(r,a,c);};})(rowId,item.articol,item.costMPbuc);
+            var row=tbody.insertRow();row.id=rowId;row.style.cursor='pointer';
+            row.onclick=(function(r,a,c){return function(){toggleProfitSerie(r,a,c);};})(rowId,item.articol,item.costMPbuc);
             var c0=row.insertCell(0);
-            c0.innerHTML=hasMS?'<span class="expand-icon" style="display:inline-block;margin-right:6px;transition:transform 0.2s;">&#9654;</span>'+item.articol:item.articol;
+            c0.innerHTML='<span class="expand-icon" style="display:inline-block;margin-right:6px;transition:transform 0.2s;">&#9654;</span>'+item.articol;
             var c1=row.insertCell(1);c1.textContent=fmtN(item.cantitate);c1.style.textAlign='right';
             var c2=row.insertCell(2);c2.textContent=fmt(item.pretVanzBuc);c2.style.textAlign='right';c2.style.fontWeight='600';
             var c3=row.insertCell(3);c3.innerHTML=fmt(item.costMPbuc)+(item.sursa==='consum'?' <span title="Cost din bonuri de consum" style="color:#3b82f6;font-size:10px;">BC</span>':' <span title="Cost din stoc" style="color:#9ca3af;font-size:10px;">ST</span>');c3.style.textAlign='right';c3.style.color='#ef4444';

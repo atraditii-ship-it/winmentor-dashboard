@@ -1,0 +1,1228 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="refresh" content="120">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <title>Razvan Idicel - Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family:'Inter',sans-serif; background:#f0f2f5; color:#1a1a2e; min-height:100vh; }
+
+        /* TOP BAR */
+        .topbar { background:#fff; border-bottom:1px solid #e4e7ec; padding:12px 24px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:100; }
+        .topbar-left { display:flex; align-items:center; gap:16px; }
+        .topbar-logo { font-size:18px; font-weight:700; color:#e85d04; }
+        .topbar-separator { width:1px; height:24px; background:#e4e7ec; }
+        .topbar-info { font-size:12px; color:#6b7280; }
+        .topbar-info strong { color:#1a1a2e; }
+        .topbar-right { display:flex; align-items:center; gap:12px; }
+        .live-dot { width:8px; height:8px; background:#22c55e; border-radius:50%; animation:pulse 2s infinite; }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+        .topbar-time { font-size:12px; color:#6b7280; }
+
+        /* NAV */
+        .nav { background:#fff; border-bottom:1px solid #e4e7ec; padding:0 24px; display:flex; gap:0; overflow-x:auto; }
+        .nav-item { padding:12px 20px; font-size:13px; font-weight:500; color:#6b7280; cursor:pointer; border-bottom:2px solid transparent; transition:all .2s; white-space:nowrap; }
+        .nav-item:hover { color:#1a1a2e; background:#f9fafb; }
+        .nav-item.active { color:#e85d04; border-bottom-color:#e85d04; }
+
+        /* LAYOUT */
+        .content { max-width:1400px; margin:0 auto; padding:20px; }
+        .section { display:none; }
+        .section.active { display:block; }
+
+        /* KPI CARDS */
+        .kpi-row { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; margin-bottom:20px; }
+        .kpi { background:#fff; border-radius:10px; padding:16px 20px; border:1px solid #e4e7ec; }
+        .kpi-label { font-size:11px; font-weight:600; text-transform:uppercase; letter-spacing:0.5px; color:#6b7280; margin-bottom:4px; }
+        .kpi-value { font-size:22px; font-weight:700; color:#1a1a2e; }
+        .kpi-sub { font-size:11px; color:#9ca3af; margin-top:2px; }
+        .kpi.accent { border-left:3px solid #e85d04; }
+        .kpi.green { border-left:3px solid #22c55e; }
+        .kpi.blue { border-left:3px solid #3b82f6; }
+        .kpi.red { border-left:3px solid #ef4444; }
+
+        /* CHARTS */
+        .chart-row { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:20px; }
+        .chart-box { background:#fff; border-radius:10px; padding:16px; border:1px solid #e4e7ec; }
+        .chart-box h3 { font-size:13px; font-weight:600; color:#374151; margin-bottom:12px; }
+        .chart-box canvas { max-height:280px; }
+
+        /* TABLES */
+        .tbl-box { background:#fff; border-radius:10px; border:1px solid #e4e7ec; overflow:hidden; margin-bottom:16px; }
+        .tbl-header { padding:12px 16px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #e4e7ec; }
+        .tbl-header h3 { font-size:14px; font-weight:600; color:#374151; }
+        .tbl-search { border:1px solid #e4e7ec; border-radius:6px; padding:6px 10px; font-size:12px; width:200px; font-family:'Inter',sans-serif; }
+        .tbl-filter { border:1px solid #e4e7ec; border-radius:6px; padding:6px 10px; font-size:12px; font-family:'Inter',sans-serif; background:#fff; }
+        table { width:100%; border-collapse:collapse; font-size:12px; }
+        thead { background:#f9fafb; }
+        th { padding:8px 12px; text-align:left; font-weight:600; color:#6b7280; font-size:11px; text-transform:uppercase; letter-spacing:0.3px; cursor:pointer; user-select:none; white-space:nowrap; }
+        th:hover { color:#1a1a2e; }
+        td { padding:8px 12px; color:#374151; border-top:1px solid #f3f4f6; }
+        tr:hover { background:#f9fafb; }
+        .text-right { text-align:right; }
+        .text-center { text-align:center; }
+        tfoot td { font-weight:600; background:#f9fafb; border-top:2px solid #e4e7ec; font-size:12px; }
+
+        /* PAGINATION */
+        .pag { display:flex; gap:4px; justify-content:center; padding:12px; }
+        .pag button { background:#fff; border:1px solid #e4e7ec; border-radius:6px; padding:4px 10px; font-size:12px; cursor:pointer; font-family:'Inter',sans-serif; }
+        .pag button:hover { background:#f3f4f6; }
+        .pag span { padding:4px 10px; font-size:12px; color:#6b7280; }
+
+        /* RESPONSIVE */
+        @media (max-width:768px) {
+            .chart-row { grid-template-columns:1fr; }
+            .kpi-row { grid-template-columns:repeat(2, 1fr); }
+            .kpi-value { font-size:18px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- TOP BAR -->
+    <div class="topbar">
+        <div class="topbar-left">
+            <div class="topbar-logo">Razvan Idicel</div>
+            <div class="topbar-separator"></div>
+            <div class="topbar-info">Dashboard <strong id="tbPeriod"></strong></div>
+        </div>
+        <div class="topbar-right">
+            <div class="live-dot"></div>
+            <div class="topbar-time">Actualizat: <strong id="tbTime"></strong></div>
+        </div>
+    </div>
+
+    <!-- NAV -->
+    <div class="nav">
+        <div class="nav-item active" onclick="showSection('overview')">Prezentare Generala</div>
+        <div class="nav-item" onclick="showSection('monetar')">Cabinet de curiozitati</div>
+        <div class="nav-item" onclick="showSection('stocuri')">Stocuri</div>
+        <div class="nav-item" onclick="showSection('vanzari')">Vanzari Detaliate</div>
+        <div class="nav-item" onclick="showSection('profitabilitate')">Profitabilitate</div>
+        <div class="nav-item" onclick="showSection('pnl')">P&amp;L pe Canale</div>
+        <div class="nav-item" onclick="showSection('scadentar')">Scadentar</div>
+    </div>
+
+    <div class="content">
+
+        <!-- OVERVIEW SECTION -->
+        <div id="overview" class="section active">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
+                <span style="font-size:13px;font-weight:500;color:#6b7280;">Perioada:</span>
+                <select id="ovPeriod" class="tbl-filter" onchange="renderOverview()" style="min-width:160px;"></select>
+            </div>
+            <div class="kpi-row" id="overviewKpis"></div>
+            <div class="chart-row">
+                <div class="chart-box">
+                    <h3>Cifra de Afaceri pe Luni (RON)</h3>
+                    <canvas id="chartCA"></canvas>
+                </div>
+                <div class="chart-box">
+                    <h3>Cabinet de curiozitati - Vanzari Zilnice (RON)</h3>
+                    <canvas id="chartMonetar"></canvas>
+                </div>
+            </div>
+            <div class="chart-row">
+                <div class="chart-box">
+                    <h3>Top 10 Produse (cantitate vanduta)</h3>
+                    <canvas id="chartTopProduse"></canvas>
+                </div>
+                <div class="chart-box">
+                    <h3>Distributie Stoc pe Categorii (valoare)</h3>
+                    <canvas id="chartStocCateg"></canvas>
+                    <div id="stocCategTotal" style="text-align:center;margin-top:8px;font-size:14px;color:#374151;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MONETAR SECTION -->
+        <div id="monetar" class="section">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+                <label style="color:#888;font-size:13px;font-weight:500;">Luna:</label>
+                <select id="monetarLuna" class="tbl-filter" onchange="changeMonetarLuna()" style="min-width:140px;"></select>
+            </div>
+            <div class="kpi-row" id="monetarKpis"></div>
+            <div class="chart-row">
+                <div class="chart-box">
+                    <h3 id="titleMonetarZile">Vanzari pe Zile (RON)</h3>
+                    <canvas id="chartMonetarZile"></canvas>
+                </div>
+                <div class="chart-box">
+                    <h3 id="titleMonetarBonuri">Nr. Bonuri pe Zile</h3>
+                    <canvas id="chartMonetarBonuri"></canvas>
+                </div>
+            </div>
+            <div class="tbl-box">
+                <div class="tbl-header">
+                    <h3 id="mTableTitle">Produse Vandute la Magazin</h3>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <div style="display:flex;border:1px solid #e4e7ec;border-radius:6px;overflow:hidden;">
+                            <button onclick="setMView('total')" id="mViewTotal" style="padding:5px 12px;font-size:12px;border:none;cursor:pointer;font-family:'Inter',sans-serif;background:#e85d04;color:#fff;">Total</button>
+                            <button onclick="setMView('zile')" id="mViewZile" style="padding:5px 12px;font-size:12px;border:none;cursor:pointer;font-family:'Inter',sans-serif;background:#fff;color:#374151;">Pe zile</button>
+                        </div>
+                        <input type="text" id="mSearch" class="tbl-search" placeholder="Cauta produs..." oninput="renderMonetarTable()">
+                    </div>
+                </div>
+                <table>
+                    <thead id="mHead"></thead>
+                    <tbody id="mBody"></tbody>
+                    <tfoot><tr><td id="mFoot"></td></tr></tfoot>
+                </table>
+                <div class="pag" id="mPag"></div>
+            </div>
+        </div>
+
+        <!-- STOCURI SECTION -->
+        <div id="stocuri" class="section">
+            <div class="kpi-row" id="stocKpis"></div>
+            <div class="tbl-box">
+                <div class="tbl-header">
+                    <h3>Stocuri Curente</h3>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <select id="sCateg" class="tbl-filter" onchange="renderStocTable()">
+                            <option value="">Toate categoriile</option>
+                            <option value="produse">Produse Finite + Marfuri</option>
+                            <option value="materii">Materii Prime</option>
+                            <option value="ambalaje">Ambalaje</option>
+                        </select>
+                        <select id="sGest" class="tbl-filter" onchange="renderStocTable()"><option value="">Toate gestiunile</option></select>
+                        <input type="text" id="sSearch" class="tbl-search" placeholder="Cauta articol..." oninput="renderStocTable()">
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th onclick="sortS(0)">Cod</th>
+                            <th onclick="sortS(1)">Denumire</th>
+                            <th onclick="sortS(2)">UM</th>
+                            <th class="text-right" onclick="sortS(3)">Cantitate</th>
+                            <th class="text-right" onclick="sortS(4)">Valoare</th>
+                            <th onclick="sortS(5)">Gestiune</th>
+                        </tr>
+                    </thead>
+                    <tbody id="sBody"></tbody>
+                    <tfoot><tr><td colspan="6" id="sFoot"></td></tr></tfoot>
+                </table>
+                <div class="pag" id="sPag"></div>
+            </div>
+        </div>
+
+        <!-- VANZARI SECTION -->
+        <div id="vanzari" class="section">
+            <div class="tbl-box">
+                <div class="tbl-header">
+                    <h3>Toate Vanzarile</h3>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <input type="date" id="vFrom" class="tbl-filter" onchange="renderVanzariTable()">
+                        <span style="color:#6b7280;font-size:12px;">-</span>
+                        <input type="date" id="vTo" class="tbl-filter" onchange="renderVanzariTable()">
+                        <input type="text" id="vSearch" class="tbl-search" placeholder="Cauta produs/client..." oninput="renderVanzariTable()">
+                    </div>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th onclick="sortV(0)">Data</th>
+                            <th onclick="sortV(1)">Factura</th>
+                            <th onclick="sortV(2)">Client</th>
+                            <th onclick="sortV(3)">Articol</th>
+                            <th class="text-right" onclick="sortV(4)">Cant</th>
+                            <th class="text-right" onclick="sortV(5)">Valoare</th>
+                            <th class="text-right" onclick="sortV(6)">TVA</th>
+                        </tr>
+                    </thead>
+                    <tbody id="vBody"></tbody>
+                    <tfoot><tr><td colspan="7" id="vFoot"></td></tr></tfoot>
+                </table>
+                <div class="pag" id="vPag"></div>
+            </div>
+        </div>
+
+        <!-- PROFITABILITATE SECTION -->
+        <div id="profitabilitate" class="section">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap;">
+                <span style="font-size:13px;font-weight:500;color:#6b7280;">Luna:</span>
+                <select id="profitLuna" class="tbl-filter" onchange="renderProfitabilitate()" style="min-width:160px;"><option value="all">Tot anul (cumulat)</option></select>
+                <span style="font-size:13px;font-weight:500;color:#6b7280;margin-left:8px;">Canal:</span>
+                <select id="profitCanal" class="tbl-filter" onchange="renderProfitabilitate()" style="min-width:120px;">
+                    <option value="all">Toate canalele</option>
+                    <option value="WEB">WEB</option><option value="GLO">GLO</option><option value="MOD">MOD</option>
+                    <option value="TRAD">TRAD</option><option value="EX">EX</option><option value="SHOP">SHOP</option>
+                </select>
+                <input type="text" id="searchProfit" class="tbl-search" placeholder="Cauta produs..." oninput="renderProfitabilitate()" style="max-width:250px;">
+            </div>
+            <div id="cheltuieliCards" style="margin-bottom:16px;"></div>
+            <div id="summaryProfit" style="color:#6b7280;font-size:13px;margin-bottom:8px;font-weight:600;"></div>
+            <div class="tbl-box">
+                <table>
+                    <thead>
+                        <tr>
+                            <th onclick="sortProfitTable(0)">Produs</th>
+                            <th class="text-right" onclick="sortProfitTable(1)">Cant.</th>
+                            <th class="text-right" onclick="sortProfitTable(2)">Pret Vanz/buc</th>
+                            <th class="text-right" onclick="sortProfitTable(3)">Cost MP/buc</th>
+                            <th class="text-right" onclick="sortProfitTable(4)">Cost Total/buc</th>
+                            <th class="text-right" onclick="sortProfitTable(5)">Profit/buc</th>
+                            <th class="text-right" onclick="sortProfitTable(6)">Marja %</th>
+                            <th class="text-right" onclick="sortProfitTable(7)">Total Venituri</th>
+                            <th class="text-right" onclick="sortProfitTable(8)">Total Profit</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableProfitabilitate"></tbody>
+                </table>
+                <div class="pag" id="paginationProfit"></div>
+            </div>
+        </div>
+
+        <!-- P&L PE CANALE SECTION -->
+        <div id="pnl" class="section">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+                <span style="font-size:13px;font-weight:500;color:#6b7280;">Luna:</span>
+                <select id="pnlCanaleLuna" class="tbl-filter" onchange="renderPnlCanale()" style="min-width:160px;"></select>
+                <span id="pnlCanaleStatus" style="color:#6b7280;font-size:12px;margin-left:12px;"></span>
+            </div>
+            <div id="pnlCanaleContent"></div>
+        </div>
+
+        <!-- SCADENTAR SECTION -->
+        <div id="scadentar" class="section">
+            <div class="kpi-row" id="scadKpis"></div>
+            <div class="tbl-box">
+                <div class="tbl-header">
+                    <h3>Facturi Restante Clienti</h3>
+                    <input type="text" id="scSearch" class="tbl-search" placeholder="Cauta client..." oninput="renderScadTable()">
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th onclick="sortSc(0)">Client</th>
+                            <th onclick="sortSc(1)">Factura</th>
+                            <th onclick="sortSc(2)">Data</th>
+                            <th onclick="sortSc(3)">Scadenta</th>
+                            <th class="text-right" onclick="sortSc(4)">Sold Ramas</th>
+                            <th class="text-right" onclick="sortSc(5)">Zile Intarziere</th>
+                        </tr>
+                    </thead>
+                    <tbody id="scBody"></tbody>
+                    <tfoot><tr><td colspan="6" id="scFoot"></td></tr></tfoot>
+                </table>
+                <div class="pag" id="scPag"></div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+    // =========== UTILS ===========
+    var luniNume = {1:'Ianuarie',2:'Februarie',3:'Martie',4:'Aprilie',5:'Mai',6:'Iunie',7:'Iulie',8:'August',9:'Septembrie',10:'Octombrie',11:'Noiembrie',12:'Decembrie'};
+    function fmt(v) { return (v||0).toLocaleString('ro-RO',{minimumFractionDigits:2,maximumFractionDigits:2})+' RON'; }
+    function fmtN(v) { return (v||0).toLocaleString('ro-RO',{minimumFractionDigits:0,maximumFractionDigits:0}); }
+
+    // =========== NAV ===========
+    function showSection(id) {
+        document.querySelectorAll('.section').forEach(function(el){el.classList.remove('active');});
+        document.querySelectorAll('.nav-item').forEach(function(el){el.classList.remove('active');});
+        document.getElementById(id).classList.add('active');
+        event.target.classList.add('active');
+    }
+
+    // =========== OVERVIEW ===========
+    var ovCharts = {};
+
+    function populateOvPeriod() {
+        var sel = document.getElementById('ovPeriod');
+        if (sel.options.length > 0) return;
+        var bl = WINMENTOR_DATA.balanta_lunara || [];
+        var m = WINMENTOR_DATA.meta || {};
+        // Luna curenta default
+        var curLuna = m.luna || new Date().getMonth() + 1;
+        // Tot anul
+        var opt = document.createElement('option');
+        opt.value = 'all';
+        opt.textContent = 'Tot anul ' + (m.an || 2026);
+        sel.appendChild(opt);
+        // Lunile disponibile
+        bl.forEach(function(b) {
+            var o = document.createElement('option');
+            o.value = b.luna;
+            o.textContent = luniNume[b.luna] || ('Luna ' + b.luna);
+            sel.appendChild(o);
+        });
+        // Default = luna curenta
+        sel.value = String(curLuna);
+    }
+
+    function renderOverview() {
+        var D = WINMENTOR_DATA;
+        var bl = D.balanta_lunara || [];
+        var sel = document.getElementById('ovPeriod');
+        var period = sel.value || 'all';
+        var isAll = period === 'all';
+        var selLuna = isAll ? 0 : parseInt(period);
+
+        // CA
+        var caVal = 0, caPrevVal = 0, caLabel = '';
+        if (isAll) {
+            var lastBl = bl.length > 0 ? bl[bl.length - 1] : {};
+            caVal = lastBl.cifra_afaceri_cumulat || 0;
+            caLabel = 'Tot anul';
+        } else {
+            bl.forEach(function(b) { if (b.luna === selLuna) caVal = b.cifra_afaceri || 0; });
+            bl.forEach(function(b) { if (b.luna === selLuna - 1) caPrevVal = b.cifra_afaceri || 0; });
+            caLabel = luniNume[selLuna] || '';
+        }
+        var caChange = caPrevVal > 0 ? ((caVal - caPrevVal) / caPrevVal * 100).toFixed(1) : 0;
+
+        // Monetar (filtrat pe luna selectata sau tot anul)
+        var curLuna = (D.meta || {}).luna || 3;
+        var totalMonetar = 0, totalBonuri = 0;
+        (D.monetar_zile || []).forEach(function(z) {
+            if (isAll || z.luna === selLuna) { totalMonetar += z.valoare; totalBonuri += z.nrBonuri; }
+        });
+
+        // Stoc (snapshot curent, nu depinde de luna)
+        var stocPF = 0, stocMP = 0, stocAmb = 0;
+        (D.stoc || []).forEach(function(s) {
+            var t = (s.tip || '').toLowerCase();
+            if (t === 'produse finite' || t === 'marfuri') stocPF += s.valoare || 0;
+            else if (t === 'materii prime') stocMP += s.valoare || 0;
+            else if (t === 'ambalaje') stocAmb += s.valoare || 0;
+        });
+
+        // Vanzari filtrate pe perioada
+        var an = (D.meta || {}).an || 2026;
+        var vanzFilt = (D.vanzari || []).filter(function(v) {
+            if (isAll) return true;
+            var parts = (v.data || '').split('-');
+            if (parts.length >= 2) return parseInt(parts[1]) === selLuna;
+            return false;
+        });
+
+        // KPIs
+        var kh = '';
+        kh += '<div class="kpi accent"><div class="kpi-label">Cifra de Afaceri (' + caLabel + ')</div><div class="kpi-value">' + fmt(caVal) + '</div>';
+        if (!isAll && caPrevVal > 0) kh += '<div class="kpi-sub">' + (caChange > 0 ? '+' : '') + caChange + '% vs luna ant.</div>';
+        kh += '</div>';
+        if (isAll) {
+            var lastBl2 = bl.length > 0 ? bl[bl.length - 1] : {};
+            kh += '<div class="kpi accent"><div class="kpi-label">CA Luna Curenta</div><div class="kpi-value">' + fmt(lastBl2.cifra_afaceri || 0) + '</div><div class="kpi-sub">' + luniNume[curLuna] + '</div></div>';
+        }
+        kh += '<div class="kpi green"><div class="kpi-label">Cabinet de curiozitati</div><div class="kpi-value">' + fmt(totalMonetar) + '</div><div class="kpi-sub">' + (totalBonuri > 0 ? totalBonuri + ' bonuri' : (isAll && selLuna !== curLuna ? 'date doar luna curenta' : '-')) + '</div></div>';
+        kh += '<div class="kpi blue"><div class="kpi-label">Stoc Total</div><div class="kpi-value">' + fmt(stocPF + stocMP + stocAmb) + '</div><div class="kpi-sub">PF+Marfuri: ' + fmt(stocPF) + '</div></div>';
+        document.getElementById('overviewKpis').innerHTML = kh;
+
+        // Destroy old charts
+        Object.keys(ovCharts).forEach(function(k) { if (ovCharts[k]) { ovCharts[k].destroy(); ovCharts[k] = null; } });
+
+        // Chart CA pe luni
+        var caLabels = [], caData = [], caColors = [];
+        bl.forEach(function(b) {
+            caLabels.push(luniNume[b.luna] || b.luna);
+            caData.push(b.cifra_afaceri || 0);
+            caColors.push((!isAll && b.luna === selLuna) ? '#e85d04' : (isAll ? '#e85d04' : '#e4e7ec'));
+        });
+        ovCharts.ca = new Chart(document.getElementById('chartCA'), { type: 'bar', data: { labels: caLabels, datasets: [{ label: 'CA (RON)', data: caData, backgroundColor: caColors, borderRadius: 6 }] }, options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: function(v) { return fmtN(v) } } } } } });
+
+        // Chart Monetar zilnic (filtrat pe luna selectata)
+        var mzLabels = [], mzData = [];
+        (D.monetar_zile || []).forEach(function(z) {
+            if (isAll || z.luna === selLuna) { mzLabels.push('Zi ' + z.zi); mzData.push(z.valoare); }
+        });
+        ovCharts.monetar = new Chart(document.getElementById('chartMonetar'), { type: 'line', data: { labels: mzLabels, datasets: [{ label: 'Valoare (RON)', data: mzData, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', fill: true, tension: 0.3, pointRadius: 3 }] }, options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: function(v) { return fmtN(v) } } } } } });
+
+        // Top 10 produse (filtrate pe perioada)
+        var prodMap = {};
+        vanzFilt.forEach(function(v) {
+            var a = v.articol || '?';
+            if (!prodMap[a]) prodMap[a] = { cant: 0, val: 0 };
+            prodMap[a].cant += v.cantitate || 0;
+            prodMap[a].val += v.valoare || 0;
+        });
+        var topProd = Object.keys(prodMap).map(function(k) { return { n: k, c: prodMap[k].cant } }).sort(function(a, b) { return b.c - a.c }).slice(0, 10);
+        var tpLabels = topProd.map(function(p) { return p.n.length > 30 ? p.n.substr(0, 30) + '...' : p.n });
+        var tpData = topProd.map(function(p) { return p.c });
+        ovCharts.topProd = new Chart(document.getElementById('chartTopProduse'), { type: 'bar', data: { labels: tpLabels, datasets: [{ data: tpData, backgroundColor: '#3b82f6', borderRadius: 4 }] }, options: { indexAxis: 'y', responsive: true, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } } });
+
+        // Stoc categorii donut cu sume in legenda
+        ovCharts.stocCateg = new Chart(document.getElementById('chartStocCateg'), { type: 'doughnut', data: { labels: ['Produse Finite + Marfuri: ' + fmt(stocPF), 'Materii Prime: ' + fmt(stocMP), 'Ambalaje: ' + fmt(stocAmb)], datasets: [{ data: [stocPF, stocMP, stocAmb], backgroundColor: ['#e85d04', '#3b82f6', '#f59e0b'], borderWidth: 0 }] }, options: { responsive: true, plugins: { legend: { position: 'bottom', labels: { font: { size: 12 }, padding: 16 } } } } });
+        document.getElementById('stocCategTotal').innerHTML='<strong>Total Stoc: '+fmt(stocPF+stocMP+stocAmb)+'</strong>';
+    }
+
+    // =========== MONETAR ===========
+    var mSort={col:2,asc:false}, mPage=0, mPS=50, mView='total', mFilterProd=null;
+    var chartMZ=null, chartMB=null;
+
+    function initMonetarLuna(){
+        var sel=document.getElementById('monetarLuna');if(!sel)return;
+        var zile=WINMENTOR_DATA.monetar_zile||[];
+        var luni={};zile.forEach(function(z){if(z.luna)luni[z.luna]=true;});
+        var luniArr=Object.keys(luni).sort(function(a,b){return parseInt(a)-parseInt(b);});
+        sel.innerHTML='';
+        luniArr.forEach(function(l){var o=document.createElement('option');o.value=l;o.textContent=luniNume[parseInt(l)]||('Luna '+l);sel.appendChild(o);});
+        if(luniArr.length>0)sel.value=luniArr[luniArr.length-1];
+    }
+    function getMonetarLuna(){var sel=document.getElementById('monetarLuna');return sel?parseInt(sel.value):0;}
+    function changeMonetarLuna(){mFilterProd=null;renderMonetarSection();}
+
+    function setMView(v) {
+        mView=v; mSort=v==='total'?{col:2,asc:false}:{col:-1,asc:true}; mPage=0;
+        document.getElementById('mViewTotal').style.background = v==='total'?'#e85d04':'#fff';
+        document.getElementById('mViewTotal').style.color = v==='total'?'#fff':'#374151';
+        document.getElementById('mViewZile').style.background = v==='zile'?'#e85d04':'#fff';
+        document.getElementById('mViewZile').style.color = v==='zile'?'#fff':'#374151';
+        renderMonetarTable();
+    }
+    function sortM(c){if(mSort.col===c)mSort.asc=!mSort.asc;else{mSort.col=c;mSort.asc=true;}mPage=0;renderMonetarTable();}
+
+    function filterMonetarCharts(denumire){
+        mFilterProd=denumire;
+        var lunaM=getMonetarLuna();
+        var linii=(WINMENTOR_DATA.monetar_linii||[]).filter(function(l){return !lunaM||l.luna===lunaM;});
+        var zile=(WINMENTOR_DATA.monetar_zile||[]).filter(function(z){return !lunaM||z.luna===lunaM;});
+        // Build per-day data for this product
+        var dayMap={};
+        zile.forEach(function(z){dayMap[z.zi]={val:0,bon:0,cant:0};});
+        linii.forEach(function(l){
+            if(l.denumire===denumire){
+                if(!dayMap[l.zi]) dayMap[l.zi]={val:0,bon:0,cant:0};
+                dayMap[l.zi].val+=(l.valoare||0);
+                dayMap[l.zi].bon+=1;
+                dayMap[l.zi].cant+=Math.max(1,Math.round(l.cant||0));
+            }
+        });
+        var days=Object.keys(dayMap).map(Number).sort(function(a,b){return a-b;});
+        var labels=[],vals=[],bons=[],cants=[];
+        days.forEach(function(d){labels.push('Zi '+d);vals.push(dayMap[d].val);bons.push(dayMap[d].bon);cants.push(dayMap[d].cant);});
+        // Redraw charts
+        if(chartMZ){chartMZ.destroy();}
+        if(chartMB){chartMB.destroy();}
+        var short=denumire.length>30?denumire.substring(0,30)+'...':denumire;
+        document.getElementById('titleMonetarZile').innerHTML='Vanzari pe Zile: <span style="color:#e85d04">'+short+'</span> <button onclick="resetMonetarFilter()" style="font-size:11px;padding:2px 8px;margin-left:8px;border:1px solid #e4e7ec;border-radius:4px;background:#fff;cursor:pointer;font-family:Inter,sans-serif;">Arata toate</button>';
+        document.getElementById('titleMonetarBonuri').innerHTML='Nr. Bonuri pe Zile: <span style="color:#3b82f6">'+short+'</span> <button onclick="resetMonetarFilter()" style="font-size:11px;padding:2px 8px;margin-left:8px;border:1px solid #e4e7ec;border-radius:4px;background:#fff;cursor:pointer;font-family:Inter,sans-serif;">Arata toate</button>';
+        var ttCant={callbacks:{afterLabel:function(ctx){return 'Cantitate: '+cants[ctx.dataIndex];}}};
+        chartMZ=new Chart(document.getElementById('chartMonetarZile'),{type:'bar',data:{labels:labels,datasets:[{label:'Valoare',data:vals,backgroundColor:'#e85d04',borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false},tooltip:ttCant},scales:{y:{beginAtZero:true}}}});
+        chartMB=new Chart(document.getElementById('chartMonetarBonuri'),{type:'bar',data:{labels:labels,datasets:[{label:'Bonuri',data:bons,backgroundColor:'#3b82f6',borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false},tooltip:ttCant},scales:{y:{beginAtZero:true}}}});
+        renderMonetarTable();
+    }
+
+    function resetMonetarFilter(){
+        mFilterProd=null;
+        var lunaM=getMonetarLuna();
+        var zile=(WINMENTOR_DATA.monetar_zile||[]).filter(function(z){return !lunaM||z.luna===lunaM;});
+        var labels=[],vals=[],bons=[];
+        zile.forEach(function(z){labels.push('Zi '+z.zi);vals.push(z.valoare);bons.push(z.nrBonuri);});
+        if(chartMZ){chartMZ.destroy();}
+        if(chartMB){chartMB.destroy();}
+        document.getElementById('titleMonetarZile').textContent='Vanzari pe Zile (RON)';
+        document.getElementById('titleMonetarBonuri').textContent='Nr. Bonuri pe Zile';
+        chartMZ=new Chart(document.getElementById('chartMonetarZile'),{type:'bar',data:{labels:labels,datasets:[{label:'Valoare',data:vals,backgroundColor:'#e85d04',borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+        chartMB=new Chart(document.getElementById('chartMonetarBonuri'),{type:'bar',data:{labels:labels,datasets:[{label:'Bonuri',data:bons,backgroundColor:'#3b82f6',borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+        renderMonetarTable();
+    }
+
+    function renderMonetarSection(){
+        var D=WINMENTOR_DATA;
+        var lunaM=getMonetarLuna();
+        var zile=(D.monetar_zile||[]).filter(function(z){return !lunaM||z.luna===lunaM;});
+        var linii=(D.monetar_linii||[]).filter(function(l){return !lunaM||l.luna===lunaM;});
+        var totalVal=0,totalDisc=0,totalBon=0,zileLuc=zile.length;
+        zile.forEach(function(z){totalVal+=z.valoare;totalDisc+=z.discount;totalBon+=z.nrBonuri;});
+
+        var kh='';
+        kh+='<div class="kpi accent"><div class="kpi-label">Total Monetar</div><div class="kpi-value">'+fmt(totalVal)+'</div></div>';
+        kh+='<div class="kpi green"><div class="kpi-label">Total Discount</div><div class="kpi-value">'+fmt(totalDisc)+'</div></div>';
+        kh+='<div class="kpi blue"><div class="kpi-label">Nr. Bonuri</div><div class="kpi-value">'+totalBon+'</div></div>';
+        kh+='<div class="kpi"><div class="kpi-label">Zile Lucrate</div><div class="kpi-value">'+zileLuc+'</div></div>';
+        kh+='<div class="kpi accent"><div class="kpi-label">Medie / Zi</div><div class="kpi-value">'+fmt(zileLuc>0?totalVal/zileLuc:0)+'</div></div>';
+        document.getElementById('monetarKpis').innerHTML=kh;
+
+        // Charts
+        var labels=[],vals=[],bons=[];
+        zile.forEach(function(z){labels.push('Zi '+z.zi);vals.push(z.valoare);bons.push(z.nrBonuri);});
+        chartMZ=new Chart(document.getElementById('chartMonetarZile'),{type:'bar',data:{labels:labels,datasets:[{label:'Valoare',data:vals,backgroundColor:'#e85d04',borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+        chartMB=new Chart(document.getElementById('chartMonetarBonuri'),{type:'bar',data:{labels:labels,datasets:[{label:'Bonuri',data:bons,backgroundColor:'#3b82f6',borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+
+        renderMonetarTable();
+    }
+
+    function renderMonetarTable(){
+        var lunaM=getMonetarLuna();
+        var linii=(WINMENTOR_DATA.monetar_linii||[]).filter(function(l){return !lunaM||l.luna===lunaM;});
+        var q=(document.getElementById('mSearch').value||'').toLowerCase();
+        var head=document.getElementById('mHead');
+        var foot=document.getElementById('mFoot');
+
+        if (mView === 'total') {
+            // Agregat pe produs
+            head.innerHTML='<tr><th onclick="sortM(0)">Produs</th><th onclick="sortM(1)">UM</th><th class="text-right" onclick="sortM(2)">Cant Totala</th><th class="text-right" onclick="sortM(3)">Valoare</th><th class="text-right" onclick="sortM(4)">TVA</th></tr>';
+            var prodMap={};
+            linii.forEach(function(l){
+                var key=l.denumire||'?';
+                if(!prodMap[key]) prodMap[key]={denumire:key,um:l.um||'',cant:0,valoare:0,tva:0};
+                prodMap[key].cant+=Math.max(1,Math.round(l.cant));
+                prodMap[key].valoare+=l.valoare||0;
+                prodMap[key].tva+=l.tva||0;
+            });
+            var f=Object.keys(prodMap).map(function(k){return prodMap[k];});
+            if(q) f=f.filter(function(p){return p.denumire.toLowerCase().indexOf(q)!==-1;});
+            var cols=['denumire','um','cant','valoare','tva'];
+            var num={cant:1,valoare:1,tva:1};
+            if(mSort.col>=0){var sc=cols[mSort.col];f.sort(function(a,b){var va=a[sc],vb=b[sc];if(num[sc]){va=parseFloat(va)||0;vb=parseFloat(vb)||0;return mSort.asc?va-vb:vb-va;}va=String(va||'').toLowerCase();vb=String(vb||'').toLowerCase();return mSort.asc?va.localeCompare(vb,'ro'):vb.localeCompare(va,'ro');});}
+            var tp=Math.ceil(f.length/mPS)||1;if(mPage>=tp)mPage=tp-1;
+            var page=f.slice(mPage*mPS,(mPage+1)*mPS);
+            var h='';
+            page.forEach(function(p){var sel=mFilterProd===p.denumire?' style="background:#fff3e0;cursor:pointer"':' style="cursor:pointer"';h+='<tr'+sel+' onclick="filterMonetarCharts(\''+p.denumire.replace(/'/g,"\\'")+'\')" title="Click pentru a filtra graficele"><td>'+p.denumire+'</td><td>'+p.um+'</td><td class="text-right">'+p.cant+'</td><td class="text-right">'+fmt(p.valoare)+'</td><td class="text-right">'+fmt(p.tva)+'</td></tr>';});
+            document.getElementById('mBody').innerHTML=h;
+            var sv=0,st=0;f.forEach(function(p){sv+=p.valoare;st+=p.tva;});
+            foot.colSpan=5;
+            foot.innerHTML='<strong>'+f.length+' produse | Valoare: '+fmt(sv)+' | TVA: '+fmt(st)+'</strong>';
+            renderPag('mPag',tp,mPage,function(p){mPage=p;renderMonetarTable();});
+        } else {
+            // Pe zile
+            head.innerHTML='<tr><th class="text-center" onclick="sortM(0)">Zi</th><th onclick="sortM(1)">Produs</th><th onclick="sortM(2)">UM</th><th class="text-right" onclick="sortM(3)">Cant</th><th class="text-right" onclick="sortM(4)">Pret</th><th class="text-right" onclick="sortM(5)">Valoare</th><th class="text-right" onclick="sortM(6)">TVA</th><th class="text-right" onclick="sortM(7)">Disc%</th></tr>';
+            var f=linii.slice();
+            if(q) f=f.filter(function(l){return(l.denumire||'').toLowerCase().indexOf(q)!==-1;});
+            var cols=['zi','denumire','um','cant','pret','valoare','tva','procDiscount'];
+            var num={zi:1,cant:1,pret:1,valoare:1,tva:1,procDiscount:1};
+            if(mSort.col>=0){var sc=cols[mSort.col];f.sort(function(a,b){var va=a[sc],vb=b[sc];if(num[sc]){va=parseFloat(va)||0;vb=parseFloat(vb)||0;return mSort.asc?va-vb:vb-va;}va=String(va||'').toLowerCase();vb=String(vb||'').toLowerCase();return mSort.asc?va.localeCompare(vb,'ro'):vb.localeCompare(va,'ro');});}
+            var tp=Math.ceil(f.length/mPS)||1;if(mPage>=tp)mPage=tp-1;
+            var page=f.slice(mPage*mPS,(mPage+1)*mPS);
+            var h='';
+            page.forEach(function(l){var sel=mFilterProd===l.denumire?' style="background:#fff3e0;cursor:pointer"':' style="cursor:pointer"';h+='<tr'+sel+' onclick="filterMonetarCharts(\''+l.denumire.replace(/'/g,"\\'")+'\')" title="Click pentru a filtra graficele"><td class="text-center">'+l.zi+'</td><td>'+l.denumire+'</td><td>'+l.um+'</td><td class="text-right">'+Math.max(1,Math.round(l.cant))+'</td><td class="text-right">'+fmt(l.pret)+'</td><td class="text-right">'+fmt(l.valoare)+'</td><td class="text-right">'+fmt(l.tva)+'</td><td class="text-right">'+(l.procDiscount>0?l.procDiscount.toFixed(1)+'%':'-')+'</td></tr>';});
+            document.getElementById('mBody').innerHTML=h;
+            var sv=0,st=0;f.forEach(function(l){sv+=l.valoare;st+=l.tva;});
+            foot.colSpan=8;
+            foot.innerHTML='<strong>'+f.length+' linii | Valoare: '+fmt(sv)+' | TVA: '+fmt(st)+'</strong>';
+            renderPag('mPag',tp,mPage,function(p){mPage=p;renderMonetarTable();});
+        }
+    }
+
+    // =========== STOCURI ===========
+    var sSort={col:-1,asc:true}, sPage=0, sPS=50;
+    function sortS(c){if(sSort.col===c)sSort.asc=!sSort.asc;else{sSort.col=c;sSort.asc=true;}sPage=0;renderStocTable();}
+
+    function renderStocSection(){
+        var D=WINMENTOR_DATA;
+        var stocPF=0,stocMP=0,stocAmb=0,nArt=0;
+        var gestSet=new Set();
+        (D.stoc||[]).forEach(function(s){
+            var t=(s.tip||'').toLowerCase();
+            if(t==='produse finite'||t==='marfuri')stocPF+=s.valoare||0;
+            else if(t==='materii prime')stocMP+=s.valoare||0;
+            else if(t==='ambalaje')stocAmb+=s.valoare||0;
+            nArt++;
+            if(s.gestiune)gestSet.add(s.gestiune);
+        });
+        var kh='';
+        kh+='<div class="kpi accent"><div class="kpi-label">Stoc Total</div><div class="kpi-value">'+fmt(stocPF+stocMP+stocAmb)+'</div></div>';
+        kh+='<div class="kpi green"><div class="kpi-label">Produse + Marfuri</div><div class="kpi-value">'+fmt(stocPF)+'</div></div>';
+        kh+='<div class="kpi blue"><div class="kpi-label">Materii Prime</div><div class="kpi-value">'+fmt(stocMP)+'</div></div>';
+        kh+='<div class="kpi"><div class="kpi-label">Ambalaje</div><div class="kpi-value">'+fmt(stocAmb)+'</div></div>';
+        kh+='<div class="kpi"><div class="kpi-label">Nr. Articole</div><div class="kpi-value">'+nArt+'</div></div>';
+        document.getElementById('stocKpis').innerHTML=kh;
+
+        var sel=document.getElementById('sGest');
+        if(sel.options.length<=1){gestSet.forEach(function(g){var o=document.createElement('option');o.value=g;o.textContent=g;sel.appendChild(o);});}
+
+        renderStocTable();
+    }
+
+    function renderStocTable(){
+        var data=WINMENTOR_DATA.stoc||[];
+        var categ=document.getElementById('sCateg').value;
+        var gest=document.getElementById('sGest').value;
+        var q=(document.getElementById('sSearch').value||'').toLowerCase();
+        var f=data.filter(function(s){
+            var t=(s.tip||'').toLowerCase();
+            if(categ==='produse'&&t!=='produse finite'&&t!=='marfuri')return false;
+            if(categ==='materii'&&t!=='materii prime')return false;
+            if(categ==='ambalaje'&&t!=='ambalaje')return false;
+            if(gest&&(!s.gestiune||s.gestiune.indexOf(gest)===-1))return false;
+            if(q&&(s.denumire||'').toLowerCase().indexOf(q)===-1)return false;
+            return true;
+        });
+        var cols=['cod','denumire','um','cantitate','valoare','gestiune'];
+        var num={cantitate:1,valoare:1};
+        if(sSort.col>=0){var sc=cols[sSort.col];f.sort(function(a,b){var va=a[sc],vb=b[sc];if(num[sc]){va=parseFloat(va)||0;vb=parseFloat(vb)||0;return sSort.asc?va-vb:vb-va;}va=String(va||'').toLowerCase();vb=String(vb||'').toLowerCase();return sSort.asc?va.localeCompare(vb,'ro'):vb.localeCompare(va,'ro');});}
+        var tp=Math.ceil(f.length/sPS)||1;if(sPage>=tp)sPage=tp-1;
+        var page=f.slice(sPage*sPS,(sPage+1)*sPS);
+        var h='';
+        page.forEach(function(s){h+='<tr><td>'+s.cod+'</td><td>'+s.denumire+'</td><td>'+s.um+'</td><td class="text-right">'+fmtN(s.cantitate)+'</td><td class="text-right">'+fmt(s.valoare)+'</td><td>'+s.gestiune+'</td></tr>';});
+        document.getElementById('sBody').innerHTML=h;
+        var sv=0;f.forEach(function(s){sv+=s.valoare||0;});
+        document.getElementById('sFoot').innerHTML='<strong>'+f.length+' articole | Valoare: '+fmt(sv)+'</strong>';
+        renderPag('sPag',tp,sPage,function(p){sPage=p;renderStocTable();});
+    }
+
+    // =========== VANZARI ===========
+    var vSort={col:-1,asc:true}, vPage=0, vPS=50;
+    function sortV(c){if(vSort.col===c)vSort.asc=!vSort.asc;else{vSort.col=c;vSort.asc=true;}vPage=0;renderVanzariTable();}
+
+    function renderVanzariTable(){
+        var data=WINMENTOR_DATA.vanzari||[];
+        var from=document.getElementById('vFrom').value;
+        var to=document.getElementById('vTo').value;
+        var q=(document.getElementById('vSearch').value||'').toLowerCase();
+        var f=data.filter(function(v){
+            if(from&&v.data<from)return false;
+            if(to&&v.data>to)return false;
+            if(q&&(v.articol||'').toLowerCase().indexOf(q)===-1&&(v.client||'').toLowerCase().indexOf(q)===-1)return false;
+            return true;
+        });
+        var cols=['data','factura','client','articol','cantitate','valoare','tva'];
+        var num={cantitate:1,valoare:1,tva:1};
+        if(vSort.col>=0){var sc=cols[vSort.col];f.sort(function(a,b){var va=a[sc],vb=b[sc];if(num[sc]){va=parseFloat(va)||0;vb=parseFloat(vb)||0;return vSort.asc?va-vb:vb-va;}va=String(va||'').toLowerCase();vb=String(vb||'').toLowerCase();return vSort.asc?va.localeCompare(vb,'ro'):vb.localeCompare(va,'ro');});}
+        var tp=Math.ceil(f.length/sPS)||1;if(vPage>=tp)vPage=tp-1;
+        var page=f.slice(vPage*vPS,(vPage+1)*vPS);
+        var h='';
+        page.forEach(function(v){h+='<tr><td>'+v.data+'</td><td>'+v.factura+'</td><td>'+v.client+'</td><td>'+v.articol+'</td><td class="text-right">'+fmtN(v.cantitate)+'</td><td class="text-right">'+fmt(v.valoare)+'</td><td class="text-right">'+fmt(v.tva)+'</td></tr>';});
+        document.getElementById('vBody').innerHTML=h;
+        var sv=0,stv=0;f.forEach(function(v){sv+=v.valoare||0;stv+=v.tva||0;});
+        document.getElementById('vFoot').innerHTML='<strong>'+f.length+' linii | Valoare: '+fmt(sv)+' | TVA: '+fmt(stv)+'</strong>';
+        renderPag('vPag',tp,vPage,function(p){vPage=p;renderVanzariTable();});
+    }
+
+    // =========== SCADENTAR ===========
+    var scSort={col:-1,asc:true}, scPage=0, scPS=50;
+    function sortSc(c){if(scSort.col===c)scSort.asc=!scSort.asc;else{scSort.col=c;scSort.asc=true;}scPage=0;renderScadTable();}
+
+    function renderScadSection(){
+        var data=WINMENTOR_DATA.scadentar_clienti||[];
+        var totalRest=0,nrRest=0,nrIntarz=0;
+        data.forEach(function(s){totalRest+=s.sold_ramas||0;nrRest++;if(s.zile_intarziere>0)nrIntarz++;});
+        var kh='';
+        kh+='<div class="kpi red"><div class="kpi-label">Total Restante</div><div class="kpi-value">'+fmt(totalRest)+'</div></div>';
+        kh+='<div class="kpi"><div class="kpi-label">Nr. Facturi</div><div class="kpi-value">'+nrRest+'</div></div>';
+        kh+='<div class="kpi red"><div class="kpi-label">Facturi Intarziate</div><div class="kpi-value">'+nrIntarz+'</div></div>';
+        document.getElementById('scadKpis').innerHTML=kh;
+        renderScadTable();
+    }
+
+    function renderScadTable(){
+        var data=WINMENTOR_DATA.scadentar_clienti||[];
+        var q=(document.getElementById('scSearch').value||'').toLowerCase();
+        var f=data.filter(function(s){return !q||(s.client||'').toLowerCase().indexOf(q)!==-1;});
+        var cols=['client','factura','data_factura','data_scadenta','sold_ramas','zile_intarziere'];
+        var num={sold_ramas:1,zile_intarziere:1};
+        if(scSort.col>=0){var sc=cols[scSort.col];f.sort(function(a,b){var va=a[sc],vb=b[sc];if(num[sc]){va=parseFloat(va)||0;vb=parseFloat(vb)||0;return scSort.asc?va-vb:vb-va;}va=String(va||'').toLowerCase();vb=String(vb||'').toLowerCase();return scSort.asc?va.localeCompare(vb,'ro'):vb.localeCompare(va,'ro');});}
+        var tp=Math.ceil(f.length/scPS)||1;if(scPage>=tp)scPage=tp-1;
+        var page=f.slice(scPage*scPS,(scPage+1)*scPS);
+        var h='';
+        page.forEach(function(s){
+            var cls=s.zile_intarziere>30?' style="color:#ef4444"':'';
+            h+='<tr><td>'+s.client+'</td><td>'+s.factura+'</td><td>'+s.data_factura+'</td><td>'+s.data_scadenta+'</td><td class="text-right">'+fmt(s.sold_ramas)+'</td><td class="text-right"'+cls+'>'+s.zile_intarziere+'</td></tr>';
+        });
+        document.getElementById('scBody').innerHTML=h;
+        var sv=0;f.forEach(function(s){sv+=s.sold_ramas||0;});
+        document.getElementById('scFoot').innerHTML='<strong>'+f.length+' facturi | Total: '+fmt(sv)+'</strong>';
+        renderPag('scPag',tp,scPage,function(p){scPage=p;renderScadTable();});
+    }
+
+    // =========== PAGINATION ===========
+    function renderPag(id,tp,cp,cb){
+        var el=document.getElementById(id);
+        if(tp<=1){el.innerHTML='';return;}
+        var h='';
+        if(cp>0)h+='<button onclick="void(0)" id="'+id+'_p">&#8249;</button>';
+        h+='<span>'+( cp+1)+' / '+tp+'</span>';
+        if(cp<tp-1)h+='<button onclick="void(0)" id="'+id+'_n">&#8250;</button>';
+        el.innerHTML=h;
+        var prev=document.getElementById(id+'_p');
+        var next=document.getElementById(id+'_n');
+        if(prev)prev.onclick=function(){cb(cp-1);};
+        if(next)next.onclick=function(){cb(cp+1);};
+    }
+
+    // =========== PROFITABILITATE ===========
+    var profitSort={col:-1,asc:true}, profitPage=0, profitPS=25;
+    var profitDataCache=[], profitSerieMap={};
+    var cantPerCanal={}, totalCantAllForGeneral=0;
+
+    function populateProfitLuna(){
+        var sel=document.getElementById('profitLuna'); if(!sel)return;
+        var bl=WINMENTOR_DATA.balanta_lunara||[];
+        var m=WINMENTOR_DATA.meta||{};
+        sel.innerHTML='<option value="all">Tot anul (cumulat)</option>';
+        bl.forEach(function(b){
+            var o=document.createElement('option');o.value=b.luna;
+            o.textContent=(luniNume[b.luna]||'Luna '+b.luna)+' '+(b.an||2026);
+            sel.appendChild(o);
+        });
+        if(m.luna) sel.value=m.luna;
+    }
+
+    function getCheltuieliForPeriod(lunaFilter){
+        var bl=WINMENTOR_DATA.balanta_lunara||[];
+        var ch={cifra_afaceri:0,materii_prime:0,cost_marfuri:0,ambalaje:0,discount_primite:0,
+            marja_bruta:0,venituri_productie:0,marja_bruta_totala:0,
+            salarii:0,tichete:0,deplasari:0,chirii:0,energie:0,telecom:0,materiale:0,obiecte_inventar:0,
+            transport:0,servicii_bancare:0,asigurari:0,servicii_terti:0,colaboratori:0,comisioane:0,
+            publicitate:0,reparatii:0,amenzi_donatii:0,taxe:0,amortizare:0,dobanzi:0,dif_curs:0,
+            total_cheltuieli_op:0,ebitda:0,ebit:0,rezultat:0,total:0};
+        bl.forEach(function(m){
+            if(lunaFilter!=='all'&&m.luna!==parseInt(lunaFilter))return;
+            ch.cifra_afaceri+=m.cifra_afaceri||0;
+            ch.materii_prime+=m.ch_materii_prime||0;
+            ch.cost_marfuri+=m.ch_cost_marfuri||0;
+            ch.ambalaje+=m.ch_ambalaje||0;
+            ch.discount_primite+=m.ch_discount_primite||0;
+            ch.venituri_productie+=m.venituri_productie||0;
+            ch.salarii+=(m.ch_salarii||0)+(m.ch_asig_sociale||0);
+            ch.tichete+=m.ch_tichete||0;
+            ch.deplasari+=m.ch_deplasari||0;
+            ch.chirii+=m.ch_chirii||0;
+            ch.energie+=m.ch_energie||0;
+            ch.telecom+=m.ch_posta_telecom||0;
+            ch.materiale+=(m.ch_materiale||0)+(m.ch_materiale_nestocate||0);
+            ch.obiecte_inventar+=m.ch_obiecte_inventar||0;
+            ch.transport+=m.ch_transport||0;
+            ch.servicii_bancare+=m.ch_servicii_bancare||0;
+            ch.asigurari+=m.ch_asigurari||0;
+            ch.servicii_terti+=m.ch_alte_servicii||0;
+            ch.colaboratori+=m.ch_colaboratori||0;
+            ch.comisioane+=m.ch_comisioane||0;
+            ch.publicitate+=m.ch_publicitate||m.ch_protocol||0;
+            ch.reparatii+=m.ch_intretinere||0;
+            ch.amenzi_donatii+=(m.ch_alte_exploatare||0)+(m.ch_pierderi_creante||0);
+            ch.taxe+=m.ch_taxe||0;
+            ch.amortizare+=m.ch_amortizare||0;
+            ch.dobanzi+=m.ch_dobanzi||0;
+            ch.dif_curs+=m.ch_dif_curs||0;
+            ch.total+=m.total_cheltuieli||0;
+        });
+        ch.marja_bruta=ch.cifra_afaceri-ch.materii_prime-ch.cost_marfuri-ch.ambalaje+ch.discount_primite;
+        ch.marja_bruta_totala=ch.marja_bruta+ch.venituri_productie;
+        ch.total_cheltuieli_op=ch.salarii+ch.tichete+ch.deplasari+ch.chirii+ch.energie+ch.telecom+ch.materiale+ch.obiecte_inventar+ch.transport+ch.servicii_bancare+ch.asigurari+ch.servicii_terti+ch.colaboratori+ch.comisioane+ch.publicitate+ch.reparatii+ch.amenzi_donatii+ch.taxe+ch.amortizare;
+        ch.rezultat=ch.marja_bruta_totala-ch.total_cheltuieli_op-ch.dobanzi-ch.dif_curs;
+        ch.ebit=ch.rezultat+ch.dobanzi+ch.dif_curs;
+        ch.ebitda=ch.ebit+ch.amortizare;
+        return ch;
+    }
+
+    function renderCheltuieliCards(ch){
+        var el=document.getElementById('cheltuieliCards');if(!el)return;
+        var marjaP=ch.cifra_afaceri>0?(ch.marja_bruta_totala/ch.cifra_afaceri*100).toFixed(1):'0';
+        var ebitdaP=ch.cifra_afaceri>0?(ch.ebitda/ch.cifra_afaceri*100).toFixed(1):'0';
+        var rezP=ch.cifra_afaceri>0?(ch.rezultat/ch.cifra_afaceri*100).toFixed(1):'0';
+        function kpi(label,val,pct,color,big){
+            var bg=big?'background:'+color+';color:#fff;':'background:#fff;border:1px solid #e4e7ec;';
+            return '<div style="'+bg+'border-radius:10px;padding:12px 18px;min-width:140px;text-align:center;">'+
+                '<div style="font-size:10px;'+(big?'color:rgba(255,255,255,0.8);':'color:#6b7280;')+'text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px;">'+label+'</div>'+
+                '<div style="font-size:'+(big?'18':'15')+'px;font-weight:700;'+(big?'':'color:'+color+';')+'">'+fmt(val)+'</div>'+
+                (pct!==null?'<div style="font-size:11px;margin-top:2px;'+(big?'color:rgba(255,255,255,0.7);':'color:#9ca3af;')+'">'+pct+'% din CA</div>':'')+
+                '</div>';
+        }
+        var h='<div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px;">';
+        h+=kpi('Cifra de Afaceri',ch.cifra_afaceri,null,'#374151',true);
+        h+=kpi('Marja Bruta Totala',ch.marja_bruta_totala,marjaP,ch.marja_bruta_totala>=0?'#22c55e':'#ef4444',true);
+        h+=kpi('EBITDA',ch.ebitda,ebitdaP,ch.ebitda>=0?'#e85d04':'#ef4444',true);
+        h+=kpi('Rezultat Net',ch.rezultat,rezP,ch.rezultat>=0?'#22c55e':'#ef4444',true);
+        h+='</div>';
+        h+='<div style="display:flex;gap:6px;flex-wrap:wrap;">';
+        var det=[['Materii Prime',ch.materii_prime,'601'],['Cost Marfuri',ch.cost_marfuri,'607'],['Ambalaje',ch.ambalaje,'608'],
+            ['Angajati',ch.salarii+ch.tichete+ch.deplasari,'641+642+625'],['Transport',ch.transport,'624'],
+            ['Publicitate',ch.publicitate,'623'],['Servicii Terti',ch.servicii_terti,'628'],['Chirii',ch.chirii,'612'],
+            ['Energie',ch.energie,'605'],['Amortizare',ch.amortizare,'681'],['Dobanzi',ch.dobanzi,'666'],
+            ['Dif. Curs',ch.dif_curs,'665'],['Taxe',ch.taxe,'635'],['Reparatii',ch.reparatii,'611']];
+        det.forEach(function(d){
+            if(d[1]===0)return;
+            h+='<div style="background:#f9fafb;border-radius:8px;padding:5px 10px;text-align:center;border:1px solid #e4e7ec;">'+
+                '<div style="font-size:9px;color:#9ca3af;">'+d[0]+' <span style="color:#d1d5db;">('+d[2]+')</span></div>'+
+                '<div style="font-size:13px;font-weight:600;color:#ef4444;">'+fmt(d[1])+'</div></div>';
+        });
+        h+='</div>';
+        el.innerHTML=h;
+    }
+
+    function recalcCantPerCanal(lunaFilter){
+        cantPerCanal={};totalCantAllForGeneral=0;
+        var vanzari=(WINMENTOR_DATA.vanzari||[]).filter(function(item){
+            var tipDoc=(item.tip_doc||'').toString();
+            if(tipDoc!=='19'&&tipDoc!=='22'&&tipDoc!=='26')return false;
+            if(lunaFilter!=='all'){var d=item.data||'';var im=parseInt(d.substring(5,7));if(im!==parseInt(lunaFilter))return false;}
+            return true;
+        });
+        vanzari.forEach(function(item){
+            var serie=item.serie||'FARA';var cant=item.cantitate||0;
+            if(!cantPerCanal[serie])cantPerCanal[serie]=0;
+            cantPerCanal[serie]+=cant;totalCantAllForGeneral+=cant;
+        });
+    }
+
+    function renderProfitabilitate(){
+        var lunaFilter=document.getElementById('profitLuna')?document.getElementById('profitLuna').value:'all';
+        var canalFilter=document.getElementById('profitCanal')?document.getElementById('profitCanal').value:'all';
+        var search=document.getElementById('searchProfit')?document.getElementById('searchProfit').value.toLowerCase():'';
+        var ch=getCheltuieliForPeriod(lunaFilter);
+        renderCheltuieliCards(ch);
+        var vanzari=(WINMENTOR_DATA.vanzari||[]).filter(function(item){
+            var tipDoc=(item.tip_doc||'').toString();
+            if(tipDoc!=='19'&&tipDoc!=='22'&&tipDoc!=='26')return false;
+            if(lunaFilter!=='all'){var d=item.data||'';var im=parseInt(d.substring(5,7));if(im!==parseInt(lunaFilter))return false;}
+            if(canalFilter!=='all'){if((item.serie||'')!==canalFilter)return false;}
+            return true;
+        });
+        var productMap={};var totalCantAll=0;
+        profitSerieMap={};
+        vanzari.forEach(function(item){
+            var art=item.articol||'Necunoscut';var serie=item.serie||'FARA SERIE';
+            if(!productMap[art])productMap[art]={articol:art,cantitate:0,valoare:0};
+            productMap[art].cantitate+=item.cantitate||0;
+            productMap[art].valoare+=item.valoare||0;
+            totalCantAll+=item.cantitate||0;
+            if(!profitSerieMap[art])profitSerieMap[art]={};
+            if(!profitSerieMap[art][serie])profitSerieMap[art][serie]={cantitate:0,valoare:0};
+            profitSerieMap[art][serie].cantitate+=item.cantitate||0;
+            profitSerieMap[art][serie].valoare+=item.valoare||0;
+        });
+        var stocCostMap={};
+        (WINMENTOR_DATA.stoc||[]).forEach(function(s){if(s.cantitate>0)stocCostMap[s.denumire]=s.valoare/s.cantitate;});
+        var consumCostMap={};
+        if(WINMENTOR_DATA.consumuri){
+            var luniC=(lunaFilter==='all'||!WINMENTOR_DATA.consumuri[lunaFilter])?Object.keys(WINMENTOR_DATA.consumuri):[lunaFilter];
+            var consumAgg={};
+            luniC.forEach(function(l){var ld=WINMENTOR_DATA.consumuri[l]||{};for(var p in ld){if(!consumAgg[p])consumAgg[p]={cantitate:0,cost_total:0};consumAgg[p].cantitate+=ld[p].cantitate||0;consumAgg[p].cost_total+=ld[p].cost_total||0;}});
+            for(var p in consumAgg){if(consumAgg[p].cantitate>0)consumCostMap[p]=consumAgg[p].cost_total/consumAgg[p].cantitate;}
+        }
+        var cheltuieliIndirecte=ch.total_cheltuieli_op||0;
+        recalcCantPerCanal(lunaFilter);
+        var costPerBuc=0;
+        if(typeof ALOCARE_DATA!=='undefined'){
+            var _luniAl=(lunaFilter==='all'||!ALOCARE_DATA[lunaFilter])?Object.keys(ALOCARE_DATA):[lunaFilter];
+            var _nrLuni=_luniAl.length;var _totalChAlocat=0;
+            _luniAl.forEach(function(l){var al=ALOCARE_DATA[l]||{};for(var c in al){if(al[c].channels){for(var ch2 in al[c].channels)_totalChAlocat+=al[c].channels[ch2];}if(al[c].general)_totalChAlocat+=al[c].general;}});
+            var _useFb=(lunaFilter!=='all'&&!ALOCARE_DATA[lunaFilter]);
+            var _chMediu=_useFb?_totalChAlocat/_nrLuni:_totalChAlocat;
+            if(canalFilter!=='all'){
+                var _chCanal=0,_chGen=0;
+                _luniAl.forEach(function(l){var al=ALOCARE_DATA[l]||{};for(var c in al){if(al[c].channels&&al[c].channels[canalFilter])_chCanal+=al[c].channels[canalFilter];if(al[c].general)_chGen+=al[c].general;}});
+                if(_useFb){_chCanal=_chCanal/_nrLuni;_chGen=_chGen/_nrLuni;}
+                var _cantCanal=cantPerCanal[canalFilter]||totalCantAll;
+                costPerBuc=(_chCanal/_cantCanal)+(_chGen/(totalCantAllForGeneral||1));
+            }else{costPerBuc=totalCantAll>0?_chMediu/totalCantAll:0;}
+        }else{
+            if(cheltuieliIndirecte<0)cheltuieliIndirecte=0;
+            costPerBuc=totalCantAll>0?cheltuieliIndirecte/totalCantAll:0;
+        }
+        function findConsumCost(artName){
+            var artUp=artName.toUpperCase();
+            for(var cp2 in consumCostMap){var cUp=cp2.toUpperCase();
+                if(artUp.indexOf(cUp)!==-1||cUp.indexOf(artUp)!==-1)return consumCostMap[cp2];
+                var cW=cUp.split(/\s+/);var mc=0;for(var w=0;w<cW.length;w++){if(cW[w].length>2&&artUp.indexOf(cW[w])!==-1)mc++;}
+                if(cW.length>0&&mc>=Math.max(2,cW.length*0.6))return consumCostMap[cp2];
+            }return 0;
+        }
+        var data=Object.values(productMap).map(function(p){
+            var cc=findConsumCost(p.articol);var costMPbuc=cc>0?cc:(stocCostMap[p.articol]||0);
+            var costTotalBuc=costMPbuc+costPerBuc;var pretVanzBuc=p.cantitate>0?p.valoare/p.cantitate:0;
+            var profitBuc=pretVanzBuc-costTotalBuc;var marja=pretVanzBuc>0?(profitBuc/pretVanzBuc)*100:0;
+            var totalProfit=profitBuc*p.cantitate;var sursa=cc>0?'consum':'stoc';
+            return {articol:p.articol,cantitate:Math.round(p.cantitate*100)/100,pretVanzBuc:Math.round(pretVanzBuc*100)/100,costMPbuc:Math.round(costMPbuc*100)/100,costTotalBuc:Math.round(costTotalBuc*100)/100,profitBuc:Math.round(profitBuc*100)/100,marja:Math.round(marja*10)/10,valoare:Math.round(p.valoare*100)/100,totalProfit:Math.round(totalProfit*100)/100,sursa:sursa};
+        });
+        if(search)data=data.filter(function(d){return d.articol.toLowerCase().indexOf(search)!==-1;});
+        data=data.filter(function(d){return d.costMPbuc>0;});
+        if(profitSort.col>=0){
+            var cols2=['articol','cantitate','pretVanzBuc','costMPbuc','costTotalBuc','profitBuc','marja','valoare','totalProfit'];
+            var sk=cols2[profitSort.col]||'valoare';
+            data.sort(function(a,b){var va=a[sk],vb=b[sk];if(typeof va==='number')return profitSort.asc?va-vb:vb-va;return profitSort.asc?String(va).localeCompare(String(vb),'ro'):String(vb).localeCompare(String(va),'ro');});
+        }else{data.sort(function(a,b){return b.valoare-a.valoare;});}
+        profitDataCache=data;
+        var totVen=data.reduce(function(s,x){return s+x.valoare;},0);
+        var totProf=data.reduce(function(s,x){return s+x.totalProfit;},0);
+        var totMarj=totVen>0?(totProf/totVen*100):0;
+        var sumEl=document.getElementById('summaryProfit');
+        if(sumEl){
+            var cLabel=canalFilter!=='all'?' ['+canalFilter+']':'';
+            var costSrc=canalFilter!=='all'&&typeof ALOCARE_DATA!=='undefined'?' (alocat)':' (total)';
+            sumEl.innerHTML=data.length+' produse'+cLabel+' | Venituri: '+fmt(totVen)+' | <span style="color:'+(totProf>=0?'#22c55e':'#ef4444')+';font-weight:700;">Profit: '+fmt(totProf)+' ('+totMarj.toFixed(1)+'%)</span> | Cost indirect/buc: '+fmt(Math.round(costPerBuc*100)/100)+costSrc;
+        }
+        var tp=Math.ceil(data.length/profitPS)||1;if(profitPage>=tp)profitPage=tp-1;
+        var page=data.slice(profitPage*profitPS,(profitPage+1)*profitPS);
+        var tbody=document.getElementById('tableProfitabilitate');tbody.innerHTML='';
+        page.forEach(function(item,idx){
+            var rowId='profitRow_'+(profitPage*profitPS+idx);
+            var serii=profitSerieMap[item.articol]||{};var serieKeys=Object.keys(serii);
+            var hasMS=serieKeys.length>1||(serieKeys.length===1&&serieKeys[0]!=='FARA SERIE');
+            var row=tbody.insertRow();row.id=rowId;row.style.cursor=hasMS?'pointer':'default';
+            if(hasMS)row.onclick=(function(r,a,c){return function(){toggleProfitSerie(r,a,c);};})(rowId,item.articol,item.costMPbuc);
+            var c0=row.insertCell(0);
+            c0.innerHTML=hasMS?'<span class="expand-icon" style="display:inline-block;margin-right:6px;transition:transform 0.2s;">&#9654;</span>'+item.articol:item.articol;
+            var c1=row.insertCell(1);c1.textContent=fmtN(item.cantitate);c1.style.textAlign='right';
+            var c2=row.insertCell(2);c2.textContent=fmt(item.pretVanzBuc);c2.style.textAlign='right';c2.style.fontWeight='600';
+            var c3=row.insertCell(3);c3.innerHTML=fmt(item.costMPbuc)+(item.sursa==='consum'?' <span title="Cost din bonuri de consum" style="color:#3b82f6;font-size:10px;">BC</span>':' <span title="Cost din stoc" style="color:#9ca3af;font-size:10px;">ST</span>');c3.style.textAlign='right';c3.style.color='#ef4444';
+            var c4=row.insertCell(4);c4.textContent=fmt(item.costTotalBuc);c4.style.textAlign='right';c4.style.color='#ef4444';c4.style.fontWeight='600';
+            var c5=row.insertCell(5);c5.textContent=fmt(item.profitBuc);c5.style.textAlign='right';c5.style.fontWeight='700';c5.style.color=item.profitBuc>=0?'#22c55e':'#ef4444';
+            var c6=row.insertCell(6);c6.textContent=item.marja.toFixed(1)+'%';c6.style.textAlign='right';c6.style.fontWeight='600';c6.style.color=item.marja>=20?'#22c55e':item.marja>=0?'#f59e0b':'#ef4444';
+            var c7=row.insertCell(7);c7.textContent=fmt(item.valoare);c7.style.textAlign='right';c7.style.color='#6b7280';
+            var c8=row.insertCell(8);c8.textContent=fmt(item.totalProfit);c8.style.textAlign='right';c8.style.fontWeight='600';c8.style.color=item.totalProfit>=0?'#22c55e':'#ef4444';
+        });
+        renderPag('paginationProfit',tp,profitPage,function(p){profitPage=p;renderProfitabilitate();});
+    }
+
+    function sortProfitTable(col){
+        if(profitSort.col===col)profitSort.asc=!profitSort.asc;else{profitSort.col=col;profitSort.asc=true;}
+        profitPage=0;renderProfitabilitate();
+    }
+
+    function calcCostPerBucCanal(canal,cantCanal,lunaFilter){
+        if(!cantCanal||cantCanal<=0)return 0;if(typeof ALOCARE_DATA==='undefined')return 0;
+        var _fb=(lunaFilter!=='all'&&!ALOCARE_DATA[lunaFilter]);
+        var luniAl=(lunaFilter==='all'||_fb)?Object.keys(ALOCARE_DATA):[lunaFilter];
+        var chCanal=0;
+        luniAl.forEach(function(l){var al=ALOCARE_DATA[l]||{};for(var c in al){if(al[c].channels&&al[c].channels[canal])chCanal+=al[c].channels[canal];}});
+        if(_fb)chCanal=chCanal/luniAl.length;
+        return chCanal/cantCanal;
+    }
+
+    function calcCostGeneralPerBuc(totalCant,lunaFilter){
+        if(!totalCant||totalCant<=0)return 0;if(typeof ALOCARE_DATA==='undefined')return 0;
+        var _fb=(lunaFilter!=='all'&&!ALOCARE_DATA[lunaFilter]);
+        var luniAl=(lunaFilter==='all'||_fb)?Object.keys(ALOCARE_DATA):[lunaFilter];
+        var chGen=0;
+        luniAl.forEach(function(l){var al=ALOCARE_DATA[l]||{};for(var c in al){if(al[c].general)chGen+=al[c].general;}});
+        if(_fb)chGen=chGen/luniAl.length;
+        return chGen/totalCant;
+    }
+
+    function toggleProfitSerie(rowId,articol,costMPbuc){
+        var detailId=rowId+'_serieDetail';var existing=document.getElementById(detailId);
+        var parentRow=document.getElementById(rowId);var icon=parentRow?parentRow.querySelector('.expand-icon'):null;
+        if(existing){existing.remove();if(icon)icon.style.transform='rotate(0deg)';return;}
+        if(icon)icon.style.transform='rotate(90deg)';
+        var lunaFilter=document.getElementById('profitLuna')?document.getElementById('profitLuna').value:'all';
+        recalcCantPerCanal(lunaFilter);
+        var costGenBuc=calcCostGeneralPerBuc(totalCantAllForGeneral,lunaFilter);
+        var serii=profitSerieMap[articol]||{};var serieKeys=Object.keys(serii).sort();
+        var detailRow=document.createElement('tr');detailRow.id=detailId;
+        var dc=document.createElement('td');dc.colSpan=9;dc.style.padding='0 0 0 30px';dc.style.background='#f9fafb';
+        var sh='<table style="width:100%;margin:8px 0;font-size:12px;border-collapse:collapse;">';
+        sh+='<thead><tr style="background:#f3f4f6;"><th style="text-align:left;padding:6px 10px;">Canal</th><th style="text-align:right;padding:6px 10px;">Cant</th><th style="text-align:right;padding:6px 10px;">Pret Vanz/buc</th><th style="text-align:right;padding:6px 10px;">Cost MP/buc</th><th style="text-align:right;padding:6px 10px;">Cost Canal/buc</th><th style="text-align:right;padding:6px 10px;">Cost Gen/buc</th><th style="text-align:right;padding:6px 10px;">Cost Total/buc</th><th style="text-align:right;padding:6px 10px;">Profit/buc</th><th style="text-align:right;padding:6px 10px;">Marja %</th></tr></thead><tbody>';
+        serieKeys.forEach(function(serie){
+            var s=serii[serie];var pretV=s.cantitate>0?s.valoare/s.cantitate:0;
+            var costCBuc=calcCostPerBucCanal(serie,cantPerCanal[serie]||0,lunaFilter);
+            var costTB=costMPbuc+costCBuc+costGenBuc;var profB=pretV-costTB;
+            var mj=pretV>0?(profB/pretV)*100:0;
+            var pc=profB>=0?'#22c55e':'#ef4444';var mc2=mj>=20?'#22c55e':mj>=0?'#f59e0b':'#ef4444';
+            sh+='<tr><td style="padding:5px 10px;font-weight:600;">'+(serie||'FARA SERIE')+'</td>';
+            sh+='<td style="text-align:right;padding:5px 10px;">'+fmtN(Math.round(s.cantitate*100)/100)+'</td>';
+            sh+='<td style="text-align:right;padding:5px 10px;font-weight:600;">'+fmt(Math.round(pretV*100)/100)+'</td>';
+            sh+='<td style="text-align:right;padding:5px 10px;color:#ef4444;">'+fmt(Math.round(costMPbuc*100)/100)+'</td>';
+            sh+='<td style="text-align:right;padding:5px 10px;color:#e85d04;">'+fmt(Math.round(costCBuc*100)/100)+'</td>';
+            sh+='<td style="text-align:right;padding:5px 10px;color:#8b5cf6;">'+fmt(Math.round(costGenBuc*100)/100)+'</td>';
+            sh+='<td style="text-align:right;padding:5px 10px;color:#ef4444;font-weight:700;">'+fmt(Math.round(costTB*100)/100)+'</td>';
+            sh+='<td style="text-align:right;padding:5px 10px;font-weight:700;color:'+pc+';">'+fmt(Math.round(profB*100)/100)+'</td>';
+            sh+='<td style="text-align:right;padding:5px 10px;font-weight:600;color:'+mc2+';">'+mj.toFixed(1)+'%</td></tr>';
+        });
+        sh+='</tbody></table>';dc.innerHTML=sh;detailRow.appendChild(dc);
+        if(parentRow&&parentRow.nextSibling)parentRow.parentNode.insertBefore(detailRow,parentRow.nextSibling);
+        else if(parentRow)parentRow.parentNode.appendChild(detailRow);
+    }
+
+    // =========== P&L PE CANALE ===========
+    function togglePnlDetail(rowId,contPrefix,lunaFilter){
+        var detailId=rowId+'_detail';var existing=document.getElementById(detailId);
+        if(existing){existing.remove();return;}
+        var facturi=(WINMENTOR_DATA.facturi_cheltuieli||[]).filter(function(f){
+            if(f.cont_prefix!==contPrefix&&!f.cont.startsWith(contPrefix))return false;
+            if(lunaFilter!=='all'&&f.luna!==parseInt(lunaFilter))return false;
+            return true;
+        });
+        if(facturi.length===0){
+            var pr=document.getElementById(rowId);if(pr){
+                var tr=document.createElement('tr');tr.id=detailId;
+                tr.innerHTML='<td colspan="9" style="padding:8px 20px;background:#fefce8;font-size:12px;color:#9ca3af;font-style:italic;">Nu sunt facturi individuale disponibile.</td>';
+                pr.parentNode.insertBefore(tr,pr.nextSibling);
+            }return;
+        }
+        facturi.sort(function(a,b){return Math.abs(b.valoare)-Math.abs(a.valoare);});
+        var html='<td colspan="9" style="padding:0;"><table style="width:100%;font-size:12px;border-collapse:collapse;background:#fefefe;">';
+        html+='<tr style="background:#f3f4f6;"><th style="padding:5px 10px;text-align:left;">Furnizor</th><th style="padding:5px 10px;text-align:left;">Nr. Doc</th><th style="padding:5px 10px;text-align:left;">Data</th><th style="padding:5px 10px;text-align:left;">Cont</th><th style="padding:5px 10px;text-align:left;">Descriere</th><th style="padding:5px 10px;text-align:right;">Valoare</th></tr>';
+        var tf=0;
+        facturi.forEach(function(f,i){
+            var bg=i%2===0?'#ffffff':'#f9fafb';
+            html+='<tr style="background:'+bg+';border-bottom:1px solid #f3f4f6;"><td style="padding:4px 10px;">'+(f.furnizor||'-')+'</td><td style="padding:4px 10px;">'+(f.nr_doc||'-')+'</td><td style="padding:4px 10px;">'+(f.data||'-')+'</td><td style="padding:4px 10px;color:#9ca3af;">'+(f.cont||'-')+'</td><td style="padding:4px 10px;color:#6b7280;">'+(f.descriere||'-')+'</td><td style="padding:4px 10px;text-align:right;font-weight:500;">'+fmt(f.valoare)+'</td></tr>';
+            tf+=f.valoare;
+        });
+        html+='<tr style="background:#f3f4f6;font-weight:700;"><td colspan="5" style="padding:5px 10px;">Total ('+facturi.length+' facturi)</td><td style="padding:5px 10px;text-align:right;">'+fmt(tf)+'</td></tr>';
+        html+='</table></td>';
+        var pr2=document.getElementById(rowId);if(pr2){var tr2=document.createElement('tr');tr2.id=detailId;tr2.innerHTML=html;pr2.parentNode.insertBefore(tr2,pr2.nextSibling);}
+    }
+
+    function initPnlCanaleSelector(){
+        var sel=document.getElementById('pnlCanaleLuna');if(!sel)return;
+        var bl=WINMENTOR_DATA.balanta_lunara||[];
+        sel.innerHTML='';
+        bl.forEach(function(m){var o=document.createElement('option');o.value=m.luna;o.textContent=luniNume[m.luna]||('Luna '+m.luna);sel.appendChild(o);});
+        if(bl.length>0)sel.value=bl[0].luna;
+        renderPnlCanale();
+    }
+
+    function renderPnlCanale(){
+        var sel=document.getElementById('pnlCanaleLuna');if(!sel)return;
+        var lunaFilter=sel.value;
+        var container=document.getElementById('pnlCanaleContent');
+        var statusEl=document.getElementById('pnlCanaleStatus');
+        if(!container)return;
+        var channels=['WEB','GLO','MOD','TRAD','EX','SHOP'];
+        var ch=getCheltuieliForPeriod(lunaFilter);
+        var alocare=(typeof ALOCARE_DATA!=='undefined')?ALOCARE_DATA[lunaFilter]||{}:{};
+        var hasAlocare=Object.keys(alocare).length>0;
+        if(statusEl){
+            if(!hasAlocare)statusEl.innerHTML='<span style="color:#ef4444;">&#9888; Fara alocare. Completeaza alocare_cheltuieli.xlsx</span>';
+            else statusEl.innerHTML='<span style="color:#22c55e;">&#10003; Alocare disponibila</span>';
+        }
+        var caPerChannel={};channels.forEach(function(c){caPerChannel[c]=0;});
+        var vanzari=WINMENTOR_DATA.vanzari||[];
+        vanzari.forEach(function(v){
+            var td=(v.tip_doc||'').toString();if(td!=='19'&&td!=='22'&&td!=='26')return;
+            var d=v.data||'';var im=parseInt(d.substring(5,7));
+            if(lunaFilter!=='all'&&im!==parseInt(lunaFilter))return;
+            var s=v.serie||'';if(s&&caPerChannel.hasOwnProperty(s))caPerChannel[s]+=v.valoare||0;
+        });
+        var stocCostMapP={};
+        (WINMENTOR_DATA.stoc||[]).forEach(function(s){if(s.cantitate>0)stocCostMapP[s.denumire]=s.valoare/s.cantitate;});
+        var consumCostMapP={};
+        if(WINMENTOR_DATA.consumuri){
+            var luniCp=(lunaFilter==='all'||!WINMENTOR_DATA.consumuri[lunaFilter])?Object.keys(WINMENTOR_DATA.consumuri):[lunaFilter];
+            var cAggP={};
+            luniCp.forEach(function(l){var ld=WINMENTOR_DATA.consumuri[l]||{};for(var p in ld){if(!cAggP[p])cAggP[p]={cantitate:0,cost_total:0};cAggP[p].cantitate+=ld[p].cantitate||0;cAggP[p].cost_total+=ld[p].cost_total||0;}});
+            for(var p in cAggP){if(cAggP[p].cantitate>0)consumCostMapP[p]=cAggP[p].cost_total/cAggP[p].cantitate;}
+        }
+        function findCostPnl(artName){
+            var artUp=artName.toUpperCase();
+            for(var cp in consumCostMapP){var cUp=cp.toUpperCase();
+                if(artUp.indexOf(cUp)!==-1||cUp.indexOf(artUp)!==-1)return consumCostMapP[cp];
+                var cW=cUp.split(/\s+/);var mc=0;for(var w=0;w<cW.length;w++){if(cW[w].length>2&&artUp.indexOf(cW[w])!==-1)mc++;}
+                if(cW.length>0&&mc>=Math.max(2,cW.length*0.6))return consumCostMapP[cp];
+            }
+            return 0;
+        }
+        var costProdPerCh={};channels.forEach(function(c){costProdPerCh[c]=0;});
+        vanzari.forEach(function(v){
+            var td=(v.tip_doc||'').toString();if(td!=='19'&&td!=='22'&&td!=='26')return;
+            var d=v.data||'';var im=parseInt(d.substring(5,7));
+            if(lunaFilter!=='all'&&im!==parseInt(lunaFilter))return;
+            var s=v.serie||'';if(!s||!costProdPerCh.hasOwnProperty(s))return;
+            var cc=findCostPnl(v.articol);
+            costProdPerCh[s]+=(cc>0?cc:(stocCostMapP[v.articol]||0))*(v.cantitate||0);
+        });
+        function getAl(channel,cats){var t=0;cats.forEach(function(cat){if(alocare[cat]&&alocare[cat].channels&&alocare[cat].channels[channel])t+=alocare[cat].channels[channel];});return t;}
+        function getGen(cats){var t=0;cats.forEach(function(cat){if(alocare[cat]&&alocare[cat].general)t+=alocare[cat].general;});return t;}
+        var h='<table style="width:100%;border-collapse:collapse;font-size:13px;margin-top:10px;">';
+        h+='<thead><tr style="background:#374151;color:#fff;"><th style="padding:10px 14px;text-align:left;">P&L</th><th style="padding:10px 14px;text-align:right;">TOTAL</th><th style="padding:10px 14px;text-align:right;color:#9ca3af;">GENERAL</th>';
+        channels.forEach(function(c){h+='<th style="padding:10px 14px;text-align:right;">'+c+'</th>';});
+        h+='</tr></thead><tbody>';
+        function row(label,totalVal,chVals,bold,bg,indent,generalVal){
+            var pad=(indent||0)*20+12;var fw=bold?'font-weight:700;':'';var bgS=bg?'background:'+bg+';':'';
+            var r='<tr style="border-bottom:1px solid #e5e7eb;'+bgS+'">';
+            r+='<td style="padding:7px 14px;padding-left:'+pad+'px;'+fw+'">'+label+'</td>';
+            var col=function(v){return v<-0.5?'color:#ef4444;':'';};
+            r+='<td style="padding:7px 14px;text-align:right;'+fw+col(totalVal)+'">'+fmt(totalVal)+'</td>';
+            var gv=generalVal||0;
+            r+='<td style="padding:7px 14px;text-align:right;'+fw+'color:#9ca3af;'+col(gv)+'">'+(gv!==0?fmt(gv):'-')+'</td>';
+            channels.forEach(function(c){var v=chVals[c]||0;r+='<td style="padding:7px 14px;text-align:right;'+fw+col(v)+'">'+fmt(v)+'</td>';});
+            return r+'</tr>';
+        }
+        function pctR(label,valTotal,valCh,caT,caCh){
+            var r='<tr style="border-bottom:1px solid #e5e7eb;background:#f9fafb;">';
+            r+='<td style="padding:3px 14px;font-size:11px;color:#9ca3af;font-style:italic;">'+label+'</td>';
+            r+='<td style="padding:3px 14px;text-align:right;font-size:11px;color:#9ca3af;">'+(caT>0?(valTotal/caT*100).toFixed(1)+'%':'-')+'</td>';
+            r+='<td style="padding:3px 14px;text-align:right;font-size:11px;color:#9ca3af;">-</td>';
+            channels.forEach(function(c){var v=valCh[c]||0;var ca=caCh[c]||0;r+='<td style="padding:3px 14px;text-align:right;font-size:11px;color:#9ca3af;">'+(ca>0?(v/ca*100).toFixed(1)+'%':'-')+'</td>';});
+            return r+'</tr>';
+        }
+        h+=row('CIFRA DE AFACERI',ch.cifra_afaceri,caPerChannel,true,'#f0fdf4',0);
+        h+=row('(-) Cost productie (601)',ch.materii_prime,costProdPerCh,false,null,1);
+        if(ch.cost_marfuri>0){var cm={};channels.forEach(function(c){cm[c]=getAl(c,['607']);});h+=row('(-) Cost marfuri (607)',ch.cost_marfuri,hasAlocare?cm:{},false,null,1);}
+        if(ch.ambalaje>0){var am={};channels.forEach(function(c){am[c]=getAl(c,['608']);});h+=row('(-) Ambalaje (608)',ch.ambalaje,hasAlocare?am:{},false,null,1);}
+        if(ch.discount_primite>0){var dc={};channels.forEach(function(c){dc[c]=getAl(c,['609']);});h+=row('(+) Discounturi primite (609)',ch.discount_primite,hasAlocare?dc:{},false,null,1);}
+        var mb={};channels.forEach(function(c){mb[c]=(caPerChannel[c]||0)-(costProdPerCh[c]||0);});
+        h+=row('MARJA BRUTA',ch.marja_bruta,mb,true,'#dcfce7',0);
+        h+=pctR('% din CA',ch.marja_bruta,mb,ch.cifra_afaceri,caPerChannel);
+        if(ch.venituri_productie){var vp={};channels.forEach(function(c){vp[c]=0;});h+=row('(+) Venituri productie (711)',ch.venituri_productie,vp,false,null,1);}
+        var mbt={};channels.forEach(function(c){mbt[c]=mb[c];});
+        h+=row('MARJA BRUTA TOTALA',ch.marja_bruta_totala,mbt,true,'#dcfce7',0);
+        h+=pctR('% din CA',ch.marja_bruta_totala,mbt,ch.cifra_afaceri,caPerChannel);
+        h+='<tr style="background:#f3f4f6;border-top:2px solid #d1d5db;"><td colspan="'+(3+channels.length)+'" style="padding:8px 14px;font-weight:700;color:#6b7280;">CHELTUIELI OPERATIONALE</td></tr>';
+        var expRows=[['Salarii + Asig. Sociale',['641+642'],ch.salarii],['Tichete masa',['642T'],ch.tichete],['Deplasari',['625'],ch.deplasari],['Transport',['624'],ch.transport],['Publicitate / Protocol',['623'],ch.publicitate],['Chirii',['612'],ch.chirii],['Energie',['605'],ch.energie],['Telecom / Posta',['626'],ch.telecom],['Materiale consumabile',['602'],ch.materiale],['Obiecte inventar',['603'],ch.obiecte_inventar],['Servicii terti',['628'],ch.servicii_terti],['Colaboratori',['621'],ch.colaboratori],['Comisioane',['622'],ch.comisioane],['Servicii bancare',['627'],ch.servicii_bancare],['Asigurari',['613'],ch.asigurari],['Reparatii / Intretinere',['611'],ch.reparatii],['Amenzi / Donatii / Alte',['Alte'],ch.amenzi_donatii],['Taxe',['635'],ch.taxe],['Amortizare',['681'],ch.amortizare]];
+        var totOpCh={};channels.forEach(function(c){totOpCh[c]=0;});
+        var amortCh={};channels.forEach(function(c){amortCh[c]=0;});
+        var totGenOp=0;var expRowIdx=0;
+        expRows.forEach(function(er){
+            if(er[2]===0)return;
+            var ev={};channels.forEach(function(c){ev[c]=getAl(c,er[1]);totOpCh[c]+=ev[c];});
+            if(er[1][0]==='681')channels.forEach(function(c){amortCh[c]=ev[c];});
+            var genVal=hasAlocare?getGen(er[1]):0;totGenOp+=genVal;
+            var rId='pnlExp_'+expRowIdx;var contPfx=er[1][0].replace('+','');if(contPfx.length>3)contPfx=contPfx.substring(0,3);
+            var rHtml=row(er[0]+' <span style="font-size:10px;color:#9ca3af;">&#9660;</span>',er[2],hasAlocare?ev:{},false,null,1,genVal);
+            rHtml=rHtml.replace('<tr ','<tr id="'+rId+'" style="cursor:pointer;" onclick="togglePnlDetail(\''+rId+'\',\''+contPfx+'\',\''+lunaFilter+'\')" ');
+            rHtml=rHtml.replace('style="cursor:pointer;" style="','style="cursor:pointer;');
+            h+=rHtml;expRowIdx++;
+        });
+        var condCom=alocare['COND_COM']||null;
+        if(condCom&&condCom.total!==0){
+            var ccv={};channels.forEach(function(c){ccv[c]=(condCom.channels&&condCom.channels[c])||0;totOpCh[c]+=ccv[c];});
+            var cg=condCom.general||0;totGenOp+=cg;
+            h+=row('Conditii comerciale',condCom.total,ccv,false,'#fefce8',1,cg);
+        }
+        h+=row('TOTAL CHELTUIELI OPERATIONALE',ch.total_cheltuieli_op,totOpCh,true,'#fff7ed',0,totGenOp);
+        h+=pctR('% din CA',ch.total_cheltuieli_op,totOpCh,ch.cifra_afaceri,caPerChannel);
+        var ebitda={};channels.forEach(function(c){ebitda[c]=mbt[c]-totOpCh[c]+amortCh[c];});
+        h+=row('EBITDA',ch.ebitda,ebitda,true,'#eff6ff',0);
+        h+=pctR('% din CA',ch.ebitda,ebitda,ch.cifra_afaceri,caPerChannel);
+        var ebit={};channels.forEach(function(c){ebit[c]=mbt[c]-totOpCh[c];});
+        h+=row('EBIT',ch.ebit,ebit,true,'#eff6ff',0);
+        var dob={};channels.forEach(function(c){dob[c]=getAl(c,['666']);});
+        if(ch.dobanzi>0)h+=row('(-) Dobanzi',ch.dobanzi,hasAlocare?dob:{},false,null,1);
+        var dfc={};channels.forEach(function(c){dfc[c]=getAl(c,['665']);});
+        if(ch.dif_curs>0)h+=row('(-) Diferente curs',ch.dif_curs,hasAlocare?dfc:{},false,null,1);
+        var rez={};channels.forEach(function(c){rez[c]=mbt[c]-totOpCh[c]-(dob[c]||0)-(dfc[c]||0);});
+        var totalGen=totGenOp+(hasAlocare?getGen(['666']):0)+(hasAlocare?getGen(['665']):0);
+        h+=row('REZULTAT NET',ch.rezultat,rez,true,ch.rezultat>=0?'#dcfce7':'#fee2e2',0,totalGen);
+        h+=pctR('% din CA',ch.rezultat,rez,ch.cifra_afaceri,caPerChannel);
+        h+='</tbody></table>';
+        h+='<div style="margin-top:16px;padding:12px;background:#f9fafb;border-radius:8px;font-size:12px;color:#6b7280;border:1px solid #e5e7eb;">';
+        h+='<strong>Legenda:</strong> GENERAL = cheltuieli nealocate direct pe canale. Cost productie per canal = stoc x cantitate vanduta. Cheltuielile operationale se aloca din <strong>alocare_cheltuieli.xlsx</strong>.';
+        h+='</div>';
+        container.innerHTML=h;
+    }
+
+    // =========== INIT ===========
+    function init(){
+        if(typeof WINMENTOR_DATA==='undefined')window.WINMENTOR_DATA={meta:{},sumar:{},stoc:[],vanzari:[],scadentar_clienti:[],balanta_lunara:[],monetar_zile:[],monetar_linii:[]};
+        if(typeof ALOCARE_DATA==='undefined')window.ALOCARE_DATA={};
+        var m=WINMENTOR_DATA.meta||{};
+        document.getElementById('tbPeriod').textContent=(luniNume[m.luna]||'')+' '+(m.an||2026);
+        document.getElementById('tbTime').textContent=m.data_extragere||'-';
+
+        var now=new Date();
+        var y=now.getFullYear(),mo=now.getMonth();
+        document.getElementById('vFrom').value=new Date(y,mo,1).toISOString().slice(0,10);
+        document.getElementById('vTo').value=new Date(y,mo+1,0).toISOString().slice(0,10);
+
+        populateOvPeriod();
+        renderOverview();
+        initMonetarLuna();
+        renderMonetarSection();
+        renderStocSection();
+        renderVanzariTable();
+        renderScadSection();
+        populateProfitLuna();
+        renderProfitabilitate();
+        initPnlCanaleSelector();
+    }
+
+    document.addEventListener('DOMContentLoaded',init);
+    </script>
+
+    <script>
+        var _cb = Date.now();
+        document.write('<scr'+'ipt src="date_winmentor.js?t='+_cb+'"><\/scr'+'ipt>');
+        document.write('<scr'+'ipt src="alocare_cheltuieli.js?t='+_cb+'"><\/scr'+'ipt>');
+    </script>
+</body>
+</html>

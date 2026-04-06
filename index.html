@@ -320,11 +320,10 @@
                             <th onclick="sortAC(3)" class="text-right" style="cursor:pointer;">Revenue &#8597;</th>
                             <th onclick="sortAC(4)" class="text-right" style="cursor:pointer;">Cost MP/buc &#8597;</th>
                             <th onclick="sortAC(5)" class="text-right" style="cursor:pointer;">Cost Canal/buc &#8597;</th>
-                            <th onclick="sortAC(6)" class="text-right" style="cursor:pointer;">Cost Gen/buc &#8597;</th>
-                            <th onclick="sortAC(7)" class="text-right" style="cursor:pointer;">Cost Total/buc &#8597;</th>
-                            <th onclick="sortAC(8)" class="text-right" style="cursor:pointer;">Profit/buc &#8597;</th>
-                            <th onclick="sortAC(9)" class="text-right" style="cursor:pointer;">Marja % &#8597;</th>
-                            <th onclick="sortAC(10)" class="text-right" style="cursor:pointer;">Profit Total &#8597;</th>
+                            <th onclick="sortAC(6)" class="text-right" style="cursor:pointer;">Cost Total/buc &#8597;</th>
+                            <th onclick="sortAC(7)" class="text-right" style="cursor:pointer;">Profit/buc &#8597;</th>
+                            <th onclick="sortAC(8)" class="text-right" style="cursor:pointer;">Marja % &#8597;</th>
+                            <th onclick="sortAC(9)" class="text-right" style="cursor:pointer;">Profit Total &#8597;</th>
                         </tr>
                     </thead>
                     <tbody id="acBody"></tbody>
@@ -1047,7 +1046,7 @@
         var detailRow=document.createElement('tr');detailRow.id=detailId;
         var dc=document.createElement('td');dc.colSpan=9;dc.style.padding='0 0 0 30px';dc.style.background='#f9fafb';
         var sh='<table style="width:100%;margin:8px 0;font-size:12px;border-collapse:collapse;">';
-        sh+='<thead><tr style="background:#f3f4f6;"><th style="text-align:left;padding:6px 10px;">Canal</th><th style="text-align:right;padding:6px 10px;">Cant</th><th style="text-align:right;padding:6px 10px;">Pret Vanz/buc</th><th style="text-align:right;padding:6px 10px;">Cost MP/buc</th><th style="text-align:right;padding:6px 10px;">Cost Canal/buc</th><th style="text-align:right;padding:6px 10px;">Cost Gen/buc</th><th style="text-align:right;padding:6px 10px;">Cost Total/buc</th><th style="text-align:right;padding:6px 10px;">Profit/buc</th><th style="text-align:right;padding:6px 10px;">Marja %</th></tr></thead><tbody>';
+        sh+='<thead><tr style="background:#f3f4f6;"><th style="text-align:left;padding:6px 10px;">Canal</th><th style="text-align:right;padding:6px 10px;">Cant</th><th style="text-align:right;padding:6px 10px;">Pret Vanz/buc</th><th style="text-align:right;padding:6px 10px;">Cost MP/buc</th><th style="text-align:right;padding:6px 10px;">Cost Canal/buc</th><th style="text-align:right;padding:6px 10px;">Cost Total/buc</th><th style="text-align:right;padding:6px 10px;">Profit/buc</th><th style="text-align:right;padding:6px 10px;">Marja %</th></tr></thead><tbody>';
         serieKeys.forEach(function(serie){
             var s=serii[serie];var pretV=s.cantitate>0?s.valoare/s.cantitate:0;
             var costCBuc=calcCostPerBucCanal(serie,cantPerCanal[serie]||0,lunaFilter);
@@ -1059,7 +1058,6 @@
             sh+='<td style="text-align:right;padding:5px 10px;font-weight:600;">'+fmt(Math.round(pretV*100)/100)+'</td>';
             sh+='<td style="text-align:right;padding:5px 10px;color:#ef4444;">'+fmt(Math.round(costMPbuc*100)/100)+'</td>';
             sh+='<td style="text-align:right;padding:5px 10px;color:#e85d04;">'+fmt(Math.round(costCBuc*100)/100)+'</td>';
-            sh+='<td style="text-align:right;padding:5px 10px;color:#8b5cf6;">'+fmt(Math.round(costGenBuc*100)/100)+'</td>';
             sh+='<td style="text-align:right;padding:5px 10px;color:#ef4444;font-weight:700;">'+fmt(Math.round(costTB*100)/100)+'</td>';
             sh+='<td style="text-align:right;padding:5px 10px;font-weight:700;color:'+pc+';">'+fmt(Math.round(profB*100)/100)+'</td>';
             sh+='<td style="text-align:right;padding:5px 10px;font-weight:600;color:'+mc2+';">'+mj.toFixed(1)+'%</td></tr>';
@@ -1196,7 +1194,7 @@
         data=data.filter(function(d){return d.cantitate>0;});
 
         // Sort
-        var cols=['articol','cantitate','pretV','valoare','costMP','costCBuc','costGenBuc','costTot','profBuc','marja','profTot'];
+        var cols=['articol','cantitate','pretV','valoare','costMP','costCBuc','costTot','profBuc','marja','profTot'];
         if(acSort.col>=0){
             var sk=cols[acSort.col]||'valoare';
             data.sort(function(a,b){var va=a[sk],vb=b[sk];if(typeof va==='number')return acSort.asc?va-vb:vb-va;return acSort.asc?String(va).localeCompare(String(vb),'ro'):String(vb).localeCompare(String(va),'ro');});
@@ -1215,12 +1213,11 @@
             '<div class="kpi-card"><div class="kpi-label">Bucati vandute</div><div class="kpi-value">'+fmtN(Math.round(totCant))+'</div></div>'+
             '<div class="kpi-card"><div class="kpi-label">Revenue '+canal+'</div><div class="kpi-value" style="color:#3b82f6;">'+fmt(totRev)+' RON</div></div>'+
             '<div class="kpi-card"><div class="kpi-label">Cost Canal/buc</div><div class="kpi-value" style="color:#e85d04;">'+fmt(costCBuc)+' RON</div></div>'+
-            '<div class="kpi-card"><div class="kpi-label">Cost General/buc</div><div class="kpi-value" style="color:#8b5cf6;">'+fmt(costGenBuc)+' RON</div></div>'+
             '<div class="kpi-card"><div class="kpi-label">Profit Total '+canal+'</div><div class="kpi-value" style="color:'+(totProfTot>=0?'#22c55e':'#ef4444')+';">'+fmt(totProfTot)+' RON</div></div>'+
             '<div class="kpi-card"><div class="kpi-label">Marja</div><div class="kpi-value" style="color:'+(totMarja>=20?'#22c55e':totMarja>=0?'#f59e0b':'#ef4444')+';">'+totMarja.toFixed(1)+'%</div></div>';
 
         var summEl=document.getElementById('acSummary');
-        if(summEl) summEl.textContent=data.length+' produse | Cost alocat canal total: '+fmt(totCostCanal)+' RON | Cost gen total: '+fmt(totCostGen)+' RON';
+        if(summEl) summEl.textContent=data.length+' produse | Cost alocat canal total: '+fmt(totCostCanal)+' RON';
 
         // Pagination
         var tp=Math.ceil(data.length/acPS)||1; if(acPage>=tp)acPage=tp-1;
@@ -1237,7 +1234,6 @@
             td(fmt(d.valoare),true,'#3b82f6');
             td(fmt(d.costMP),false,'#ef4444');
             td(fmt(d.costCBuc),false,'#e85d04');
-            td(fmt(d.costGenBuc),false,'#8b5cf6');
             td(fmt(d.costTot),true,'#ef4444');
             td(fmt(d.profBuc),true,d.profBuc>=0?'#22c55e':'#ef4444');
             td(d.marja.toFixed(1)+'%',true,d.marja>=20?'#22c55e':d.marja>=0?'#f59e0b':'#ef4444');
@@ -1253,7 +1249,7 @@
         ftd(fmtN(Math.round(totCant)));
         ftd('');
         ftd(fmt(totRev),'#3b82f6');
-        ftd('');ftd(fmt(costCBuc),'#e85d04');ftd(fmt(costGenBuc),'#8b5cf6');ftd('');
+        ftd('');ftd(fmt(costCBuc),'#e85d04');ftd('');
         ftd('');
         ftd(totMarja.toFixed(1)+'%',totMarja>=20?'#22c55e':totMarja>=0?'#f59e0b':'#ef4444');
         ftd(fmt(totProfTot),totProfTot>=0?'#22c55e':'#ef4444');

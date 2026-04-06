@@ -104,6 +104,7 @@
         <div class="nav-item" onclick="showSection('vanzari')">Vanzari Detaliate</div>
         <div class="nav-item" onclick="showSection('profitabilitate')">Profitabilitate</div>
         <div class="nav-item" onclick="showSection('pnl')">P&amp;L pe Canale</div>
+        <div class="nav-item" onclick="showSection('analizacanal')">Analiza Canal</div>
         <div class="nav-item" onclick="showSection('scadentar')">Scadentar</div>
     </div>
 
@@ -286,6 +287,51 @@
                 <span id="pnlCanaleStatus" style="color:#6b7280;font-size:12px;margin-left:12px;"></span>
             </div>
             <div id="pnlCanaleContent"></div>
+        </div>
+
+        <!-- ANALIZA CANAL SECTION -->
+        <div id="analizacanal" class="section">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+                <span style="font-size:13px;font-weight:500;color:#6b7280;">Luna:</span>
+                <select id="acLuna" class="tbl-filter" onchange="renderAnalizaCanal()" style="min-width:160px;"><option value="all">Tot anul (cumulat)</option></select>
+                <span style="font-size:13px;font-weight:500;color:#6b7280;">Canal:</span>
+                <select id="acCanal" class="tbl-filter" onchange="renderAnalizaCanal()" style="min-width:130px;">
+                    <option value="WEB">WEB</option>
+                    <option value="GLO">GLO</option>
+                    <option value="MOD">MOD</option>
+                    <option value="TRAD">TRAD</option>
+                    <option value="SHOP">SHOP</option>
+                    <option value="EX">EX</option>
+                </select>
+                <input type="text" id="acSearch" class="tbl-search" placeholder="Cauta produs..." oninput="renderAnalizaCanal()" style="min-width:200px;">
+            </div>
+            <div id="acKpis" class="kpi-row" style="margin-bottom:16px;"></div>
+            <div class="tbl-box">
+                <div class="tbl-header">
+                    <h3 id="acTitle">Produse vandute pe canal</h3>
+                    <span id="acSummary" style="font-size:12px;color:#6b7280;"></span>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th onclick="sortAC(0)" style="cursor:pointer;">Produs &#8597;</th>
+                            <th onclick="sortAC(1)" class="text-right" style="cursor:pointer;">Cant &#8597;</th>
+                            <th onclick="sortAC(2)" class="text-right" style="cursor:pointer;">Pret mediu &#8597;</th>
+                            <th onclick="sortAC(3)" class="text-right" style="cursor:pointer;">Revenue &#8597;</th>
+                            <th onclick="sortAC(4)" class="text-right" style="cursor:pointer;">Cost MP/buc &#8597;</th>
+                            <th onclick="sortAC(5)" class="text-right" style="cursor:pointer;">Cost Canal/buc &#8597;</th>
+                            <th onclick="sortAC(6)" class="text-right" style="cursor:pointer;">Cost Gen/buc &#8597;</th>
+                            <th onclick="sortAC(7)" class="text-right" style="cursor:pointer;">Cost Total/buc &#8597;</th>
+                            <th onclick="sortAC(8)" class="text-right" style="cursor:pointer;">Profit/buc &#8597;</th>
+                            <th onclick="sortAC(9)" class="text-right" style="cursor:pointer;">Marja % &#8597;</th>
+                            <th onclick="sortAC(10)" class="text-right" style="cursor:pointer;">Profit Total &#8597;</th>
+                        </tr>
+                    </thead>
+                    <tbody id="acBody"></tbody>
+                    <tfoot id="acFoot"></tfoot>
+                </table>
+            </div>
+            <div id="acPag" style="margin-top:10px;"></div>
         </div>
 
         <!-- SCADENTAR SECTION -->
@@ -1053,6 +1099,168 @@
         var pr2=document.getElementById(rowId);if(pr2){var tr2=document.createElement('tr');tr2.id=detailId;tr2.innerHTML=html;pr2.parentNode.insertBefore(tr2,pr2.nextSibling);}
     }
 
+    // ============================================================
+    // ANALIZA CANAL
+    // ============================================================
+    var acSort={col:-1,asc:true}, acPage=0, acPS=50, acDataCache=[];
+
+    function initAnalizaCanal(){
+        var sel=document.getElementById('acLuna'); if(!sel)return;
+        var bl=WINMENTOR_DATA.balanta_lunara||[];
+        var m=WINMENTOR_DATA.meta||{};
+        sel.innerHTML='<option value="all">Tot anul (cumulat)</option>';
+        bl.forEach(function(b){
+            var o=document.createElement('option');o.value=b.luna;
+            o.textContent=(luniNume[b.luna]||'Luna '+b.luna)+' '+(b.an||2026);
+            sel.appendChild(o);
+        });
+        if(m.luna) sel.value=m.luna;
+    }
+
+    function sortAC(col){
+        if(acSort.col===col)acSort.asc=!acSort.asc;else{acSort.col=col;acSort.asc=true;}
+        acPage=0; renderAnalizaCanal();
+    }
+
+    function renderAnalizaCanal(){
+        var luna=document.getElementById('acLuna')?document.getElementById('acLuna').value:'all';
+        var canal=document.getElementById('acCanal')?document.getElementById('acCanal').value:'WEB';
+        var q=(document.getElementById('acSearch')?document.getElementById('acSearch').value:'').toLowerCase();
+
+        // Title
+        var titleEl=document.getElementById('acTitle');
+        if(titleEl) titleEl.textContent='Produse vandute pe canalul '+canal+(luna!=='all'?' — '+(luniNume[luna]||'Luna '+luna):'');
+
+        // Filter sales for this canal + luna
+        var vanzari=(WINMENTOR_DATA.vanzari||[]).filter(function(v){
+            var td=(v.tip_doc||'').toString();
+            if(td!=='19'&&td!=='22'&&td!=='26') return false;
+            if(luna!=='all'){var im=parseInt((v.data||'').substring(5,7));if(im!==parseInt(luna))return false;}
+            if((v.serie||'')!==canal) return false;
+            return true;
+        });
+
+        // Aggregate by product
+        var prodMap={};
+        vanzari.forEach(function(v){
+            var art=v.articol||'Necunoscut';
+            if(!prodMap[art]) prodMap[art]={articol:art,cantitate:0,valoare:0};
+            prodMap[art].cantitate+=v.cantitate||0;
+            prodMap[art].valoare+=v.valoare||0;
+        });
+
+        // Cost MP lookup
+        var stocCostMap={};
+        (WINMENTOR_DATA.stoc||[]).forEach(function(s){if(s.cantitate>0)stocCostMap[s.denumire]=s.valoare/s.cantitate;});
+        var consumCostMap={};
+        if(WINMENTOR_DATA.consumuri){
+            var luniC=(luna==='all'||!WINMENTOR_DATA.consumuri[luna])?Object.keys(WINMENTOR_DATA.consumuri):[luna];
+            var consumAgg={};
+            luniC.forEach(function(l){var ld=WINMENTOR_DATA.consumuri[l]||{};for(var p in ld){if(!consumAgg[p])consumAgg[p]={cantitate:0,cost_total:0};consumAgg[p].cantitate+=ld[p].cantitate||0;consumAgg[p].cost_total+=ld[p].cost_total||0;}});
+            for(var p in consumAgg){if(consumAgg[p].cantitate>0)consumCostMap[p]=consumAgg[p].cost_total/consumAgg[p].cantitate;}
+        }
+        function findConsumCost(artName){
+            var artUp=artName.toUpperCase();
+            for(var cp in consumCostMap){var cUp=cp.toUpperCase();
+                if(artUp.indexOf(cUp)!==-1||cUp.indexOf(artUp)!==-1)return consumCostMap[cp];
+                var cW=cUp.split(/\s+/);var mc=0;for(var w=0;w<cW.length;w++){if(cW[w].length>2&&artUp.indexOf(cW[w])!==-1)mc++;}
+                if(cW.length>0&&mc>=Math.max(2,cW.length*0.6))return consumCostMap[cp];
+            }return 0;
+        }
+
+        // Cost canal + general per buc
+        recalcCantPerCanal(luna);
+        var cantCanal=cantPerCanal[canal]||0;
+        var costCBuc=calcCostPerBucCanal(canal,cantCanal,luna);
+        var costGenBuc=calcCostGeneralPerBuc(totalCantAllForGeneral,luna);
+
+        // Build data rows
+        var data=Object.values(prodMap).map(function(p){
+            var cc=findConsumCost(p.articol);
+            var costMP=cc>0?cc:(stocCostMap[p.articol]||0);
+            var pretV=p.cantitate>0?p.valoare/p.cantitate:0;
+            var costTot=costMP+costCBuc+costGenBuc;
+            var profBuc=pretV-costTot;
+            var marja=pretV>0?(profBuc/pretV)*100:0;
+            return {
+                articol:p.articol, cantitate:Math.round(p.cantitate*100)/100,
+                pretV:Math.round(pretV*100)/100, valoare:Math.round(p.valoare*100)/100,
+                costMP:Math.round(costMP*100)/100, costCBuc:Math.round(costCBuc*100)/100,
+                costGenBuc:Math.round(costGenBuc*100)/100, costTot:Math.round(costTot*100)/100,
+                profBuc:Math.round(profBuc*100)/100, marja:Math.round(marja*10)/10,
+                profTot:Math.round(profBuc*p.cantitate*100)/100, sursa:cc>0?'BC':'ST'
+            };
+        });
+
+        if(q) data=data.filter(function(d){return d.articol.toLowerCase().indexOf(q)!==-1;});
+        data=data.filter(function(d){return d.cantitate>0;});
+
+        // Sort
+        var cols=['articol','cantitate','pretV','valoare','costMP','costCBuc','costGenBuc','costTot','profBuc','marja','profTot'];
+        if(acSort.col>=0){
+            var sk=cols[acSort.col]||'valoare';
+            data.sort(function(a,b){var va=a[sk],vb=b[sk];if(typeof va==='number')return acSort.asc?va-vb:vb-va;return acSort.asc?String(va).localeCompare(String(vb),'ro'):String(vb).localeCompare(String(va),'ro');});
+        } else { data.sort(function(a,b){return b.valoare-a.valoare;}); }
+        acDataCache=data;
+
+        // KPIs
+        var totCant=data.reduce(function(s,x){return s+x.cantitate;},0);
+        var totRev=data.reduce(function(s,x){return s+x.valoare;},0);
+        var totProfTot=data.reduce(function(s,x){return s+x.profTot;},0);
+        var totMarja=totRev>0?(totProfTot/totRev*100):0;
+        var totCostCanal=cantCanal>0?costCBuc*cantCanal:0;
+        var totCostGen=totalCantAllForGeneral>0?costGenBuc*totalCantAllForGeneral:0;
+        var kpiEl=document.getElementById('acKpis');
+        if(kpiEl) kpiEl.innerHTML=
+            '<div class="kpi-card"><div class="kpi-label">Bucati vandute</div><div class="kpi-value">'+fmtN(Math.round(totCant))+'</div></div>'+
+            '<div class="kpi-card"><div class="kpi-label">Revenue '+canal+'</div><div class="kpi-value" style="color:#3b82f6;">'+fmt(totRev)+' RON</div></div>'+
+            '<div class="kpi-card"><div class="kpi-label">Cost Canal/buc</div><div class="kpi-value" style="color:#e85d04;">'+fmt(costCBuc)+' RON</div></div>'+
+            '<div class="kpi-card"><div class="kpi-label">Cost General/buc</div><div class="kpi-value" style="color:#8b5cf6;">'+fmt(costGenBuc)+' RON</div></div>'+
+            '<div class="kpi-card"><div class="kpi-label">Profit Total '+canal+'</div><div class="kpi-value" style="color:'+(totProfTot>=0?'#22c55e':'#ef4444')+';">'+fmt(totProfTot)+' RON</div></div>'+
+            '<div class="kpi-card"><div class="kpi-label">Marja</div><div class="kpi-value" style="color:'+(totMarja>=20?'#22c55e':totMarja>=0?'#f59e0b':'#ef4444')+';">'+totMarja.toFixed(1)+'%</div></div>';
+
+        var summEl=document.getElementById('acSummary');
+        if(summEl) summEl.textContent=data.length+' produse | Cost alocat canal total: '+fmt(totCostCanal)+' RON | Cost gen total: '+fmt(totCostGen)+' RON';
+
+        // Pagination
+        var tp=Math.ceil(data.length/acPS)||1; if(acPage>=tp)acPage=tp-1;
+        var page=data.slice(acPage*acPS,(acPage+1)*acPS);
+
+        // Table body
+        var tbody=document.getElementById('acBody'); tbody.innerHTML='';
+        page.forEach(function(d){
+            var tr=tbody.insertRow();
+            function td(v,bold,color,align){var c=tr.insertCell();c.textContent=v;if(align||bold||color){c.style.cssText='text-align:'+(align||'right')+(bold?';font-weight:700':'')+(color?';color:'+color:'');}return c;}
+            td(d.articol,false,null,'left');
+            td(fmtN(d.cantitate));
+            td(fmt(d.pretV),true);
+            td(fmt(d.valoare),true,'#3b82f6');
+            td(fmt(d.costMP),false,'#ef4444');
+            td(fmt(d.costCBuc),false,'#e85d04');
+            td(fmt(d.costGenBuc),false,'#8b5cf6');
+            td(fmt(d.costTot),true,'#ef4444');
+            td(fmt(d.profBuc),true,d.profBuc>=0?'#22c55e':'#ef4444');
+            td(d.marja.toFixed(1)+'%',true,d.marja>=20?'#22c55e':d.marja>=0?'#f59e0b':'#ef4444');
+            td(fmt(d.profTot),true,d.profTot>=0?'#22c55e':'#ef4444');
+        });
+
+        // Footer totals
+        var tfoot=document.getElementById('acFoot'); tfoot.innerHTML='';
+        var ftr=tfoot.insertRow();
+        ftr.style.cssText='background:#f3f4f6;font-weight:700;border-top:2px solid #d1d5db;';
+        function ftd(v,color){var c=ftr.insertCell();c.textContent=v;c.style.cssText='padding:8px 12px;text-align:right;'+(color?'color:'+color:'')+';font-weight:700;';}
+        var fc=ftr.insertCell();fc.textContent='TOTAL ('+data.length+' produse)';fc.style.cssText='padding:8px 12px;font-weight:700;';
+        ftd(fmtN(Math.round(totCant)));
+        ftd('');
+        ftd(fmt(totRev),'#3b82f6');
+        ftd('');ftd(fmt(costCBuc),'#e85d04');ftd(fmt(costGenBuc),'#8b5cf6');ftd('');
+        ftd('');
+        ftd(totMarja.toFixed(1)+'%',totMarja>=20?'#22c55e':totMarja>=0?'#f59e0b':'#ef4444');
+        ftd(fmt(totProfTot),totProfTot>=0?'#22c55e':'#ef4444');
+
+        renderPag('acPag',tp,acPage,function(p){acPage=p;renderAnalizaCanal();});
+    }
+
     function initPnlCanaleSelector(){
         var sel=document.getElementById('pnlCanaleLuna');if(!sel)return;
         var bl=WINMENTOR_DATA.balanta_lunara||[];
@@ -1215,6 +1423,8 @@
         populateProfitLuna();
         renderProfitabilitate();
         initPnlCanaleSelector();
+        initAnalizaCanal();
+        renderAnalizaCanal();
     }
 
     document.addEventListener('DOMContentLoaded',init);

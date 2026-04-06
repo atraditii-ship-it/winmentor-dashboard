@@ -896,7 +896,7 @@
             var _nrLuni=_luniAl.length;var _totalChAlocat=0;
             _luniAl.forEach(function(l){var al=ALOCARE_DATA[l]||{};for(var c in al){if(al[c].channels){for(var ch2 in al[c].channels)_totalChAlocat+=al[c].channels[ch2];}if(al[c].general)_totalChAlocat+=al[c].general;}});
             var _useFb=(lunaFilter!=='all'&&!ALOCARE_DATA[lunaFilter]);
-            var _chMediu=_useFb?_totalChAlocat/_nrLuni:_totalChAlocat;
+            var _chMediu=(_useFb&&_nrLuni>0)?_totalChAlocat/_nrLuni:_totalChAlocat;
             if(canalFilter!=='all'){
                 var _chCanal=0,_chGen=0;
                 _luniAl.forEach(function(l){var al=ALOCARE_DATA[l]||{};for(var c in al){if(al[c].channels&&al[c].channels[canalFilter])_chCanal+=al[c].channels[canalFilter];if(al[c].general)_chGen+=al[c].general;}});
@@ -908,6 +908,7 @@
             if(cheltuieliIndirecte<0)cheltuieliIndirecte=0;
             costPerBuc=totalCantAll>0?cheltuieliIndirecte/totalCantAll:0;
         }
+        if(isNaN(costPerBuc)||!isFinite(costPerBuc))costPerBuc=0;
         function findConsumCost(artName){
             var artUp=artName.toUpperCase();
             for(var cp2 in consumCostMap){var cUp=cp2.toUpperCase();

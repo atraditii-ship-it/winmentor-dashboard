@@ -1050,7 +1050,7 @@
         serieKeys.forEach(function(serie){
             var s=serii[serie];var pretV=s.cantitate>0?s.valoare/s.cantitate:0;
             var costCBuc=calcCostPerBucCanal(serie,cantPerCanal[serie]||0,lunaFilter);
-            var costTB=costMPbuc+costCBuc+costGenBuc;var profB=pretV-costTB;
+            var costTB=costMPbuc+costCBuc;var profB=pretV-costTB;
             var mj=pretV>0?(profB/pretV)*100:0;
             var pc=profB>=0?'#22c55e':'#ef4444';var mc2=mj>=20?'#22c55e':mj>=0?'#f59e0b':'#ef4444';
             sh+='<tr><td style="padding:5px 10px;font-weight:600;">'+(serie||'FARA SERIE')+'</td>';
@@ -1177,7 +1177,7 @@
             var cc=findConsumCost(p.articol);
             var costMP=cc>0?cc:(stocCostMap[p.articol]||0);
             var pretV=p.cantitate>0?p.valoare/p.cantitate:0;
-            var costTot=costMP+costCBuc+costGenBuc;
+            var costTot=costMP+costCBuc;
             var profBuc=pretV-costTot;
             var marja=pretV>0?(profBuc/pretV)*100:0;
             return {

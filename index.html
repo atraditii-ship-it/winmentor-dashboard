@@ -141,6 +141,10 @@
 
         <!-- MONETAR SECTION -->
         <div id="monetar" class="section">
+            <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+                <label style="color:#888;font-size:13px;font-weight:500;">Luna:</label>
+                <select id="monetarLuna" class="tbl-filter" onchange="changeMonetarLuna()" style="min-width:140px;"></select>
+            </div>
             <div class="kpi-row" id="monetarKpis"></div>
             <div class="chart-row">
                 <div class="chart-box">
@@ -373,12 +377,12 @@
         }
         var caChange = caPrevVal > 0 ? ((caVal - caPrevVal) / caPrevVal * 100).toFixed(1) : 0;
 
-        // Monetar (doar luna curenta - datele sunt doar din luna curenta)
+        // Monetar (filtrat pe luna selectata sau tot anul)
         var curLuna = (D.meta || {}).luna || 3;
         var totalMonetar = 0, totalBonuri = 0;
-        if (isAll || selLuna === curLuna) {
-            (D.monetar_zile || []).forEach(function(z) { totalMonetar += z.valoare; totalBonuri += z.nrBonuri; });
-        }
+        (D.monetar_zile || []).forEach(function(z) {
+            if (isAll || z.luna === selLuna) { totalMonetar += z.valoare; totalBonuri += z.nrBonuri; }
+        });
 
         // Stoc (snapshot curent, nu depinde de luna)
         var stocPF = 0, stocMP = 0, stocAmb = 0;
@@ -423,11 +427,11 @@
         });
         ovCharts.ca = new Chart(document.getElementById('chartCA'), { type: 'bar', data: { labels: caLabels, datasets: [{ label: 'CA (RON)', data: caData, backgroundColor: caColors, borderRadius: 6 }] }, options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: function(v) { return fmtN(v) } } } } } });
 
-        // Chart Monetar zilnic
+        // Chart Monetar zilnic (filtrat pe luna selectata)
         var mzLabels = [], mzData = [];
-        if (isAll || selLuna === curLuna) {
-            (D.monetar_zile || []).forEach(function(z) { mzLabels.push('Zi ' + z.zi); mzData.push(z.valoare); });
-        }
+        (D.monetar_zile || []).forEach(function(z) {
+            if (isAll || z.luna === selLuna) { mzLabels.push('Zi ' + z.zi); mzData.push(z.valoare); }
+        });
         ovCharts.monetar = new Chart(document.getElementById('chartMonetar'), { type: 'line', data: { labels: mzLabels, datasets: [{ label: 'Valoare (RON)', data: mzData, borderColor: '#22c55e', backgroundColor: 'rgba(34,197,94,0.1)', fill: true, tension: 0.3, pointRadius: 3 }] }, options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: function(v) { return fmtN(v) } } } } } });
 
         // Top 10 produse (filtrate pe perioada)
@@ -452,6 +456,18 @@
     var mSort={col:2,asc:false}, mPage=0, mPS=50, mView='total', mFilterProd=null;
     var chartMZ=null, chartMB=null;
 
+    function initMonetarLuna(){
+        var sel=document.getElementById('monetarLuna');if(!sel)return;
+        var zile=WINMENTOR_DATA.monetar_zile||[];
+        var luni={};zile.forEach(function(z){if(z.luna)luni[z.luna]=true;});
+        var luniArr=Object.keys(luni).sort(function(a,b){return parseInt(a)-parseInt(b);});
+        sel.innerHTML='';
+        luniArr.forEach(function(l){var o=document.createElement('option');o.value=l;o.textContent=luniNume[parseInt(l)]||('Luna '+l);sel.appendChild(o);});
+        if(luniArr.length>0)sel.value=luniArr[luniArr.length-1];
+    }
+    function getMonetarLuna(){var sel=document.getElementById('monetarLuna');return sel?parseInt(sel.value):0;}
+    function changeMonetarLuna(){mFilterProd=null;renderMonetarSection();}
+
     function setMView(v) {
         mView=v; mSort=v==='total'?{col:2,asc:false}:{col:-1,asc:true}; mPage=0;
         document.getElementById('mViewTotal').style.background = v==='total'?'#e85d04':'#fff';
@@ -464,8 +480,9 @@
 
     function filterMonetarCharts(denumire){
         mFilterProd=denumire;
-        var linii=WINMENTOR_DATA.monetar_linii||[];
-        var zile=WINMENTOR_DATA.monetar_zile||[];
+        var lunaM=getMonetarLuna();
+        var linii=(WINMENTOR_DATA.monetar_linii||[]).filter(function(l){return !lunaM||l.luna===lunaM;});
+        var zile=(WINMENTOR_DATA.monetar_zile||[]).filter(function(z){return !lunaM||z.luna===lunaM;});
         // Build per-day data for this product
         var dayMap={};
         zile.forEach(function(z){dayMap[z.zi]={val:0,bon:0,cant:0};});
@@ -494,7 +511,8 @@
 
     function resetMonetarFilter(){
         mFilterProd=null;
-        var zile=WINMENTOR_DATA.monetar_zile||[];
+        var lunaM=getMonetarLuna();
+        var zile=(WINMENTOR_DATA.monetar_zile||[]).filter(function(z){return !lunaM||z.luna===lunaM;});
         var labels=[],vals=[],bons=[];
         zile.forEach(function(z){labels.push('Zi '+z.zi);vals.push(z.valoare);bons.push(z.nrBonuri);});
         if(chartMZ){chartMZ.destroy();}
@@ -508,7 +526,9 @@
 
     function renderMonetarSection(){
         var D=WINMENTOR_DATA;
-        var zile=D.monetar_zile||[], linii=D.monetar_linii||[];
+        var lunaM=getMonetarLuna();
+        var zile=(D.monetar_zile||[]).filter(function(z){return !lunaM||z.luna===lunaM;});
+        var linii=(D.monetar_linii||[]).filter(function(l){return !lunaM||l.luna===lunaM;});
         var totalVal=0,totalDisc=0,totalBon=0,zileLuc=zile.length;
         zile.forEach(function(z){totalVal+=z.valoare;totalDisc+=z.discount;totalBon+=z.nrBonuri;});
 
@@ -530,7 +550,8 @@
     }
 
     function renderMonetarTable(){
-        var linii=WINMENTOR_DATA.monetar_linii||[];
+        var lunaM=getMonetarLuna();
+        var linii=(WINMENTOR_DATA.monetar_linii||[]).filter(function(l){return !lunaM||l.luna===lunaM;});
         var q=(document.getElementById('mSearch').value||'').toLowerCase();
         var head=document.getElementById('mHead');
         var foot=document.getElementById('mFoot');
@@ -1062,15 +1083,32 @@
             if(lunaFilter!=='all'&&im!==parseInt(lunaFilter))return;
             var s=v.serie||'';if(s&&caPerChannel.hasOwnProperty(s))caPerChannel[s]+=v.valoare||0;
         });
-        var stocCostMap={};
-        (WINMENTOR_DATA.stoc||[]).forEach(function(s){if(s.cantitate>0)stocCostMap[s.denumire]=s.valoare/s.cantitate;});
+        var stocCostMapP={};
+        (WINMENTOR_DATA.stoc||[]).forEach(function(s){if(s.cantitate>0)stocCostMapP[s.denumire]=s.valoare/s.cantitate;});
+        var consumCostMapP={};
+        if(WINMENTOR_DATA.consumuri){
+            var luniCp=(lunaFilter==='all'||!WINMENTOR_DATA.consumuri[lunaFilter])?Object.keys(WINMENTOR_DATA.consumuri):[lunaFilter];
+            var cAggP={};
+            luniCp.forEach(function(l){var ld=WINMENTOR_DATA.consumuri[l]||{};for(var p in ld){if(!cAggP[p])cAggP[p]={cantitate:0,cost_total:0};cAggP[p].cantitate+=ld[p].cantitate||0;cAggP[p].cost_total+=ld[p].cost_total||0;}});
+            for(var p in cAggP){if(cAggP[p].cantitate>0)consumCostMapP[p]=cAggP[p].cost_total/cAggP[p].cantitate;}
+        }
+        function findCostPnl(artName){
+            var artUp=artName.toUpperCase();
+            for(var cp in consumCostMapP){var cUp=cp.toUpperCase();
+                if(artUp.indexOf(cUp)!==-1||cUp.indexOf(artUp)!==-1)return consumCostMapP[cp];
+                var cW=cUp.split(/\s+/);var mc=0;for(var w=0;w<cW.length;w++){if(cW[w].length>2&&artUp.indexOf(cW[w])!==-1)mc++;}
+                if(cW.length>0&&mc>=Math.max(2,cW.length*0.6))return consumCostMapP[cp];
+            }
+            return 0;
+        }
         var costProdPerCh={};channels.forEach(function(c){costProdPerCh[c]=0;});
         vanzari.forEach(function(v){
             var td=(v.tip_doc||'').toString();if(td!=='19'&&td!=='22'&&td!=='26')return;
             var d=v.data||'';var im=parseInt(d.substring(5,7));
             if(lunaFilter!=='all'&&im!==parseInt(lunaFilter))return;
             var s=v.serie||'';if(!s||!costProdPerCh.hasOwnProperty(s))return;
-            costProdPerCh[s]+=(stocCostMap[v.articol]||0)*(v.cantitate||0);
+            var cc=findCostPnl(v.articol);
+            costProdPerCh[s]+=(cc>0?cc:(stocCostMapP[v.articol]||0))*(v.cantitate||0);
         });
         function getAl(channel,cats){var t=0;cats.forEach(function(cat){if(alocare[cat]&&alocare[cat].channels&&alocare[cat].channels[channel])t+=alocare[cat].channels[channel];});return t;}
         function getGen(cats){var t=0;cats.forEach(function(cat){if(alocare[cat]&&alocare[cat].general)t+=alocare[cat].general;});return t;}
@@ -1168,6 +1206,7 @@
 
         populateOvPeriod();
         renderOverview();
+        initMonetarLuna();
         renderMonetarSection();
         renderStocSection();
         renderVanzariTable();

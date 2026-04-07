@@ -216,8 +216,12 @@
         <div id="vanzari" class="section">
             <div class="tbl-box">
                 <div class="tbl-header">
-                    <h3>Toate Vanzarile</h3>
-                    <div style="display:flex;gap:8px;align-items:center;">
+                    <h3 id="vTitle">Toate Vanzarile</h3>
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                        <div style="display:flex;border:1px solid #e4e7ec;border-radius:6px;overflow:hidden;">
+                            <button id="vBtnTranz" onclick="setVMode('tranzactii')" style="padding:5px 12px;font-size:12px;font-weight:600;border:none;cursor:pointer;background:#e85d04;color:#fff;">Tranzactii</button>
+                            <button id="vBtnProd" onclick="setVMode('produse')" style="padding:5px 12px;font-size:12px;font-weight:600;border:none;cursor:pointer;background:#fff;color:#6b7280;">Pe Produse</button>
+                        </div>
                         <input type="date" id="vFrom" class="tbl-filter" onchange="renderVanzariTable()">
                         <span style="color:#6b7280;font-size:12px;">-</span>
                         <input type="date" id="vTo" class="tbl-filter" onchange="renderVanzariTable()">
@@ -225,7 +229,7 @@
                     </div>
                 </div>
                 <table>
-                    <thead>
+                    <thead id="vHead">
                         <tr>
                             <th onclick="sortV(0)">Data</th>
                             <th onclick="sortV(1)">Factura</th>
@@ -705,31 +709,83 @@
     }
 
     // =========== VANZARI ===========
-    var vSort={col:-1,asc:true}, vPage=0, vPS=50;
+    var vSort={col:-1,asc:true}, vPage=0, vPS=50, vMode='tranzactii';
     function sortV(c){if(vSort.col===c)vSort.asc=!vSort.asc;else{vSort.col=c;vSort.asc=true;}vPage=0;renderVanzariTable();}
+
+    function setVMode(m){
+        vMode=m; vPage=0; vSort={col:-1,asc:true};
+        var bt=document.getElementById('vBtnTranz');var bp=document.getElementById('vBtnProd');
+        if(bt&&bp){
+            bt.style.background=m==='tranzactii'?'#e85d04':'#fff';bt.style.color=m==='tranzactii'?'#fff':'#6b7280';
+            bp.style.background=m==='produse'?'#e85d04':'#fff';bp.style.color=m==='produse'?'#fff':'#6b7280';
+        }
+        renderVanzariTable();
+    }
 
     function renderVanzariTable(){
         var data=WINMENTOR_DATA.vanzari||[];
         var from=document.getElementById('vFrom').value;
         var to=document.getElementById('vTo').value;
         var q=(document.getElementById('vSearch').value||'').toLowerCase();
+        var tipOk={'19':1,'22':1,'26':1};
         var f=data.filter(function(v){
             if(from&&v.data<from)return false;
             if(to&&v.data>to)return false;
             if(q&&(v.articol||'').toLowerCase().indexOf(q)===-1&&(v.client||'').toLowerCase().indexOf(q)===-1)return false;
             return true;
         });
-        var cols=['data','factura','client','articol','cantitate','valoare','tva'];
-        var num={cantitate:1,valoare:1,tva:1};
-        if(vSort.col>=0){var sc=cols[vSort.col];f.sort(function(a,b){var va=a[sc],vb=b[sc];if(num[sc]){va=parseFloat(va)||0;vb=parseFloat(vb)||0;return vSort.asc?va-vb:vb-va;}va=String(va||'').toLowerCase();vb=String(vb||'').toLowerCase();return vSort.asc?va.localeCompare(vb,'ro'):vb.localeCompare(va,'ro');});}
-        var tp=Math.ceil(f.length/sPS)||1;if(vPage>=tp)vPage=tp-1;
-        var page=f.slice(vPage*vPS,(vPage+1)*vPS);
-        var h='';
-        page.forEach(function(v){h+='<tr><td>'+v.data+'</td><td>'+v.factura+'</td><td>'+v.client+'</td><td>'+v.articol+'</td><td class="text-right">'+fmtN(v.cantitate)+'</td><td class="text-right">'+fmt(v.valoare)+'</td><td class="text-right">'+fmt(v.tva)+'</td></tr>';});
-        document.getElementById('vBody').innerHTML=h;
-        var sv=0,stv=0;f.forEach(function(v){sv+=v.valoare||0;stv+=v.tva||0;});
-        document.getElementById('vFoot').innerHTML='<strong>'+f.length+' linii | Valoare: '+fmt(sv)+' | TVA: '+fmt(stv)+'</strong>';
-        renderPag('vPag',tp,vPage,function(p){vPage=p;renderVanzariTable();});
+
+        if(vMode==='produse'){
+            // Grupare pe produs
+            var pm={};
+            f.forEach(function(v){
+                var k=v.articol||'Necunoscut';
+                if(!pm[k])pm[k]={articol:k,cantitate:0,valoare:0,tva:0};
+                pm[k].cantitate+=v.cantitate||0;
+                pm[k].valoare+=v.valoare||0;
+                pm[k].tva+=v.tva||0;
+            });
+            var rows=Object.values(pm);
+            var cols2=['articol','cantitate','valoare','tva'];
+            var num2={cantitate:1,valoare:1,tva:1};
+            if(vSort.col>=0){var sc2=cols2[vSort.col];rows.sort(function(a,b){var va=a[sc2],vb=b[sc2];if(num2[sc2]){va=parseFloat(va)||0;vb=parseFloat(vb)||0;return vSort.asc?va-vb:vb-va;}va=String(va||'').toLowerCase();vb=String(vb||'').toLowerCase();return vSort.asc?va.localeCompare(vb,'ro'):vb.localeCompare(va,'ro');});}
+            else{rows.sort(function(a,b){return b.valoare-a.valoare;});}
+            // Header
+            document.getElementById('vHead').innerHTML='<tr><th onclick="sortV(0)" style="cursor:pointer;">Articol &#8597;</th><th class="text-right" onclick="sortV(1)" style="cursor:pointer;">Cant Total &#8597;</th><th class="text-right" onclick="sortV(2)" style="cursor:pointer;">Valoare &#8597;</th><th class="text-right" onclick="sortV(3)" style="cursor:pointer;">TVA &#8597;</th><th class="text-right">Pret Mediu</th></tr>';
+            document.getElementById('vFoot').setAttribute('colspan','5');
+            var tp2=Math.ceil(rows.length/vPS)||1;if(vPage>=tp2)vPage=tp2-1;
+            var page2=rows.slice(vPage*vPS,(vPage+1)*vPS);
+            var h2='';
+            page2.forEach(function(r){
+                var pretM=r.cantitate>0?r.valoare/r.cantitate:0;
+                h2+='<tr><td style="font-weight:500;">'+r.articol+'</td>';
+                h2+='<td class="text-right" style="font-weight:700;">'+fmtN(Math.round(r.cantitate*100)/100)+'</td>';
+                h2+='<td class="text-right" style="color:#3b82f6;font-weight:700;">'+fmt(r.valoare)+'</td>';
+                h2+='<td class="text-right" style="color:#6b7280;">'+fmt(r.tva)+'</td>';
+                h2+='<td class="text-right" style="color:#e85d04;">'+fmt(Math.round(pretM*100)/100)+'</td></tr>';
+            });
+            document.getElementById('vBody').innerHTML=h2;
+            var sv2=0,stv2=0,sc3=0;rows.forEach(function(r){sv2+=r.valoare;stv2+=r.tva;sc3+=r.cantitate;});
+            document.getElementById('vFoot').innerHTML='<strong>'+rows.length+' produse | Cant: '+fmtN(Math.round(sc3))+' | Valoare: '+fmt(sv2)+' | TVA: '+fmt(stv2)+'</strong>';
+            document.getElementById('vTitle').textContent='Produse vandute';
+            renderPag('vPag',tp2,vPage,function(p){vPage=p;renderVanzariTable();});
+        } else {
+            // Tranzactii individuale
+            document.getElementById('vHead').innerHTML='<tr><th onclick="sortV(0)" style="cursor:pointer;">Data</th><th onclick="sortV(1)" style="cursor:pointer;">Factura</th><th onclick="sortV(2)" style="cursor:pointer;">Client</th><th onclick="sortV(3)" style="cursor:pointer;">Articol</th><th class="text-right" onclick="sortV(4)" style="cursor:pointer;">Cant</th><th class="text-right" onclick="sortV(5)" style="cursor:pointer;">Valoare</th><th class="text-right" onclick="sortV(6)" style="cursor:pointer;">TVA</th></tr>';
+            document.getElementById('vFoot').setAttribute('colspan','7');
+            var cols=['data','factura','client','articol','cantitate','valoare','tva'];
+            var num={cantitate:1,valoare:1,tva:1};
+            if(vSort.col>=0){var sc=cols[vSort.col];f.sort(function(a,b){var va=a[sc],vb=b[sc];if(num[sc]){va=parseFloat(va)||0;vb=parseFloat(vb)||0;return vSort.asc?va-vb:vb-va;}va=String(va||'').toLowerCase();vb=String(vb||'').toLowerCase();return vSort.asc?va.localeCompare(vb,'ro'):vb.localeCompare(va,'ro');});}
+            var tp=Math.ceil(f.length/vPS)||1;if(vPage>=tp)vPage=tp-1;
+            var page=f.slice(vPage*vPS,(vPage+1)*vPS);
+            var h='';
+            page.forEach(function(v){h+='<tr><td>'+v.data+'</td><td>'+v.factura+'</td><td>'+v.client+'</td><td>'+v.articol+'</td><td class="text-right">'+fmtN(v.cantitate)+'</td><td class="text-right">'+fmt(v.valoare)+'</td><td class="text-right">'+fmt(v.tva)+'</td></tr>';});
+            document.getElementById('vBody').innerHTML=h;
+            var sv=0,stv=0;f.forEach(function(v){sv+=v.valoare||0;stv+=v.tva||0;});
+            document.getElementById('vFoot').innerHTML='<strong>'+f.length+' linii | Valoare: '+fmt(sv)+' | TVA: '+fmt(stv)+'</strong>';
+            document.getElementById('vTitle').textContent='Toate Vanzarile';
+            renderPag('vPag',tp,vPage,function(p){vPage=p;renderVanzariTable();});
+        }
     }
 
     // =========== SCADENTAR ===========

@@ -296,6 +296,7 @@
                 <select id="acLuna" class="tbl-filter" onchange="renderAnalizaCanal()" style="min-width:160px;"><option value="all">Tot anul (cumulat)</option></select>
                 <span style="font-size:13px;font-weight:500;color:#6b7280;">Canal:</span>
                 <select id="acCanal" class="tbl-filter" onchange="renderAnalizaCanal()" style="min-width:130px;">
+                    <option value="all">Toate canalele</option>
                     <option value="WEB">WEB</option>
                     <option value="GLO">GLO</option>
                     <option value="MOD">MOD</option>
@@ -1127,14 +1128,15 @@
 
         // Title
         var titleEl=document.getElementById('acTitle');
-        if(titleEl) titleEl.textContent='Produse vandute pe canalul '+canal+(luna!=='all'?' — '+(luniNume[luna]||'Luna '+luna):'');
+        var canalAll=(canal==='all');
+        if(titleEl) titleEl.textContent=(canalAll?'Produse vandute pe toate canalele':'Produse vandute pe canalul '+canal)+(luna!=='all'?' — '+(luniNume[luna]||'Luna '+luna):'');
 
         // Filter sales for this canal + luna
         var vanzari=(WINMENTOR_DATA.vanzari||[]).filter(function(v){
             var td=(v.tip_doc||'').toString();
             if(td!=='19'&&td!=='22'&&td!=='26') return false;
             if(luna!=='all'){var im=parseInt((v.data||'').substring(5,7));if(im!==parseInt(luna))return false;}
-            if((v.serie||'')!==canal) return false;
+            if(!canalAll&&(v.serie||'')!==canal) return false;
             return true;
         });
 
@@ -1168,9 +1170,9 @@
 
         // Cost canal + general per buc
         recalcCantPerCanal(luna);
-        var cantCanal=cantPerCanal[canal]||0;
-        var costCBuc=calcCostPerBucCanal(canal,cantCanal,luna);
-        var costGenBuc=calcCostGeneralPerBuc(totalCantAllForGeneral,luna);
+        var cantCanal=canalAll?totalCantAllForGeneral:(cantPerCanal[canal]||0);
+        var costCBuc=canalAll?0:calcCostPerBucCanal(canal,cantCanal,luna);
+        var costGenBuc=0;
 
         // Build data rows
         var data=Object.values(prodMap).map(function(p){
@@ -1211,13 +1213,13 @@
         var kpiEl=document.getElementById('acKpis');
         if(kpiEl) kpiEl.innerHTML=
             '<div class="kpi-card"><div class="kpi-label">Bucati vandute</div><div class="kpi-value">'+fmtN(Math.round(totCant))+'</div></div>'+
-            '<div class="kpi-card"><div class="kpi-label">Revenue '+canal+'</div><div class="kpi-value" style="color:#3b82f6;">'+fmt(totRev)+' RON</div></div>'+
-            '<div class="kpi-card"><div class="kpi-label">Cost Canal/buc</div><div class="kpi-value" style="color:#e85d04;">'+fmt(costCBuc)+' RON</div></div>'+
-            '<div class="kpi-card"><div class="kpi-label">Profit Total '+canal+'</div><div class="kpi-value" style="color:'+(totProfTot>=0?'#22c55e':'#ef4444')+';">'+fmt(totProfTot)+' RON</div></div>'+
+            '<div class="kpi-card"><div class="kpi-label">Revenue '+(canalAll?'total':canal)+'</div><div class="kpi-value" style="color:#3b82f6;">'+fmt(totRev)+' RON</div></div>'+
+            (canalAll?'':'<div class="kpi-card"><div class="kpi-label">Cost Canal/buc</div><div class="kpi-value" style="color:#e85d04;">'+fmt(costCBuc)+' RON</div></div>')+
+            '<div class="kpi-card"><div class="kpi-label">Profit Total '+(canalAll?'total':canal)+'</div><div class="kpi-value" style="color:'+(totProfTot>=0?'#22c55e':'#ef4444')+';">'+fmt(totProfTot)+' RON</div></div>'+
             '<div class="kpi-card"><div class="kpi-label">Marja</div><div class="kpi-value" style="color:'+(totMarja>=20?'#22c55e':totMarja>=0?'#f59e0b':'#ef4444')+';">'+totMarja.toFixed(1)+'%</div></div>';
 
         var summEl=document.getElementById('acSummary');
-        if(summEl) summEl.textContent=data.length+' produse | Cost alocat canal total: '+fmt(totCostCanal)+' RON';
+        if(summEl) summEl.textContent=data.length+' produse'+(canalAll?'':' | Cost alocat canal total: '+fmt(totCostCanal)+' RON');
 
         // Pagination
         var tp=Math.ceil(data.length/acPS)||1; if(acPage>=tp)acPage=tp-1;
@@ -1233,7 +1235,7 @@
             td(fmt(d.pretV),true);
             td(fmt(d.valoare),true,'#3b82f6');
             td(fmt(d.costMP),false,'#ef4444');
-            td(fmt(d.costCBuc),false,'#e85d04');
+            td(canalAll?'—':fmt(d.costCBuc),false,'#e85d04');
             td(fmt(d.costTot),true,'#ef4444');
             td(fmt(d.profBuc),true,d.profBuc>=0?'#22c55e':'#ef4444');
             td(d.marja.toFixed(1)+'%',true,d.marja>=20?'#22c55e':d.marja>=0?'#f59e0b':'#ef4444');
@@ -1249,7 +1251,7 @@
         ftd(fmtN(Math.round(totCant)));
         ftd('');
         ftd(fmt(totRev),'#3b82f6');
-        ftd('');ftd(fmt(costCBuc),'#e85d04');ftd('');
+        ftd('');ftd(canalAll?'—':fmt(costCBuc),'#e85d04');ftd('');
         ftd('');
         ftd(totMarja.toFixed(1)+'%',totMarja>=20?'#22c55e':totMarja>=0?'#f59e0b':'#ef4444');
         ftd(fmt(totProfTot),totProfTot>=0?'#22c55e':'#ef4444');

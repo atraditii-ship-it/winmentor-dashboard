@@ -8,6 +8,7 @@
     <title>Razvan Idicel - Dashboard</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     <style>
         * { margin:0; padding:0; box-sizing:border-box; }
         body { font-family:'Inter',sans-serif; background:#f0f2f5; color:#1a1a2e; min-height:100vh; }
@@ -349,6 +350,7 @@
                 <button onclick="planClear()" style="padding:6px 14px;background:#fff;color:#6b7280;border:1px solid #e4e7ec;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Goleste</button>
                 <button onclick="planExport()" style="padding:6px 14px;background:#3b82f6;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Export CSV</button>
                 <button onclick="planPrint()" style="padding:6px 14px;background:#7c3aed;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Raport PDF</button>
+                <button onclick="planSaveJpeg()" style="padding:6px 14px;background:#0f766e;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Salveaza JPEG</button>
                 <span id="planWeekLabel" style="font-size:14px;font-weight:700;color:#1a1a2e;margin-left:4px;"></span>
             </div>
 
@@ -393,6 +395,26 @@
                         </tr>
                     </thead>
                     <tbody id="planSumarBody"></tbody>
+                </table>
+                </div>
+            </div>
+
+            <!-- Necesar Materie Prima -->
+            <div class="tbl-box" id="planNecesarBox" style="margin-top:16px;">
+                <div class="tbl-header">
+                    <h3>Necesar Materie Prima</h3>
+                    <span style="font-size:12px;color:#6b7280;">calculat din retete × sarje planificate</span>
+                </div>
+                <div style="overflow-x:auto;">
+                <table style="min-width:600px;">
+                    <thead>
+                        <tr style="background:#f3f4f6;">
+                            <th style="text-align:left;padding:8px 14px;">Materie prima</th>
+                            <th style="text-align:right;padding:8px 12px;">Cantitate necesara</th>
+                            <th style="text-align:left;padding:8px 12px;color:#6b7280;font-weight:400;">Folosita in</th>
+                        </tr>
+                    </thead>
+                    <tbody id="planMPBody"></tbody>
                 </table>
                 </div>
             </div>
@@ -1545,6 +1567,95 @@
     document.addEventListener('DOMContentLoaded',init);
 
     // =========== PLANIFICARE PRODUCTIE ===========
+    // === RETETE — ingrediente per sarje (kg) ===
+    var RETETE = {
+        'ZACUSCA DE VINETE RAZVAN 350G (BORCAN)':        {Vinete:18,Ardei:14,Rosii:4,Ceapa:10,Ulei:7,Sare:0.5},
+        'ZACUSCA LA CEAUN PICANTA RAZVAN 350G':           {Vinete:14,Ardei:20,Ulei:5,Sare:0.2},
+        'ZACUSCA LA CEAUN CU GHEBE RAZVAN 350G':          {Vinete:12,Ardei:8,Rosii:5,Ghebe:5,Ceapa:10,Ulei:5,Sare:0.2},
+        'SALATA DE ARDEI CAPIA RAZVAN 320G':              {'Ardei cons':15,Ardei:18,Rosii:5,Ceapa:5,Ulei:5,Sare:0.2},
+        'SALATA DE VINETE RAZVAN 340G':                   {Vinete:34,Ulei:5,Sare:0.3},
+        'DULCEATA DE AFINE RAZVAN 380G':                  {Afine:25,Zahar:11},
+        'DULCEATA DE CAISE RAZVAN 380G':                  {Caise:20,Zahar:10},
+        'DULCEATA DE VISINE RAZVAN 380G':                 {Visine:20,Zahar:10},
+        'DULCEATA DE VISINE CU MIEZ DE NUCA RAZVAN 380G': {Nuca:1,Visine:20,Zahar:10},
+        'DULCEATA DE CIRESE NEGRE RAZVAN 380G':           {Cirese:25,Zahar:8},
+        'DULCEATA DE PRUNE CU NUCA 380G':                 {Nuca:1,Prune:20,Zahar:10},
+        'SILVOIZ DE PRUNE LA CEAUN FARA ZAHAR RAZVAN 380G':{Prune:100},
+        'DULCEATA DE CAPSUNI RAZVAN 380G':                {Capsuni:20,Zahar:8},
+        'ZACUSCA LA CEAUN CU FASOLE RAZVAN 350G':         {Vinete:8,Ardei:18,Rosii:4,Ceapa:10,Ulei:4,Sare:0.25},
+        'DULCEATA DE MACESE 450GR':                       {Macese:30,Zahar:12},
+        'DULCEATA DE MURE RAZVAN 380G':                   {Mure:20,Zahar:9}
+    };
+
+    function planGetReteta(numeExcel){
+        if(RETETE[numeExcel])return RETETE[numeExcel];
+        // fuzzy match
+        var nuUp=numeExcel.toUpperCase();
+        for(var k in RETETE){
+            if(k.toUpperCase()===nuUp)return RETETE[k];
+        }
+        return null;
+    }
+
+    function renderNecesarMP(){
+        // Calculeaza total ingrediente din toate zilele planificate
+        var totMP={}, produsePeIngr={};
+        planDays.forEach(function(day){
+            [[day.prod1,day.sarje1],[day.prod2,day.sarje2]].forEach(function(pair){
+                var pidx=pair[0], sarje=pair[1]||0;
+                if(pidx<0||sarje===0)return;
+                var p=PLAN_PRODUSE[pidx];
+                var reteta=planGetReteta(p.nume);
+                if(!reteta)return;
+                for(var ingr in reteta){
+                    var kg=reteta[ingr]*sarje;
+                    totMP[ingr]=(totMP[ingr]||0)+kg;
+                    if(!produsePeIngr[ingr])produsePeIngr[ingr]=[];
+                    if(produsePeIngr[ingr].indexOf(p.nume)<0)produsePeIngr[ingr].push(p.nume);
+                }
+            });
+        });
+
+        var tbody=document.getElementById('planMPBody');
+        if(!tbody)return;
+        tbody.innerHTML='';
+
+        var ingrs=Object.keys(totMP).sort();
+        if(ingrs.length===0){
+            tbody.innerHTML='<tr><td colspan="3" style="padding:16px;text-align:center;color:#9ca3af;">Planifica productia mai sus pentru a vedea necesarul de materie prima.</td></tr>';
+            return;
+        }
+
+        ingrs.forEach(function(ingr){
+            var kg=totMP[ingr];
+            var produse=produsePeIngr[ingr]||[];
+            var tr=document.createElement('tr');
+            tr.style.cssText='border-bottom:1px solid #f3f4f6;';
+            tr.innerHTML=
+                '<td style="padding:9px 14px;font-weight:700;font-size:13px;">'+ingr+'</td>'+
+                '<td style="text-align:right;padding:9px 12px;font-size:15px;font-weight:800;color:#e85d04;">'+
+                    (kg>=1000?(kg/1000).toFixed(2)+' tone':kg.toFixed(1)+' kg')+
+                '</td>'+
+                '<td style="padding:9px 12px;font-size:11px;color:#6b7280;">'+
+                    produse.map(function(p){return p.replace(/ RAZVAN \d+G.*$/i,'').replace(/RAZVAN/i,'').trim();}).join(', ')+
+                '</td>';
+            tbody.appendChild(tr);
+        });
+    }
+
+    function planSaveJpeg(){
+        var el=document.getElementById('planificare');
+        if(!el){alert('Sectiunea planificare nu a fost gasita.');return;}
+        if(typeof html2canvas==='undefined'){alert('html2canvas nu este incarcat.');return;}
+        var mondayStr=document.getElementById('planLuni')?document.getElementById('planLuni').value:'';
+        html2canvas(el,{scale:2,backgroundColor:'#f0f2f5',useCORS:true}).then(function(canvas){
+            var link=document.createElement('a');
+            link.download='plan_productie_'+(mondayStr||'sapt')+'.jpg';
+            link.href=canvas.toDataURL('image/jpeg',0.92);
+            link.click();
+        }).catch(function(e){alert('Eroare la captura: '+e.message);});
+    }
+
     // === Combinatii cunoscute din foaia "Sarje combinate" ===
     // Bidirectionale: se cauta (p1,p2) SAU (p2,p1)
     var SARJE_COMBINATE_DEFAULT = [
@@ -1767,10 +1878,10 @@
                     // Bara capacitate: raportat la maximele combinatiei
                     var capacPct=0, capacCol='#3b82f6';
                     if(p1&&p2&&combo){
-                        var pct1=combo.max1>0?s1/combo.max1:0;
-                        var pct2=combo.max2>0?s2/combo.max2:0;
-                        capacPct=Math.round(Math.max(pct1,pct2)*100);
-                        capacCol=capacPct>=100?'#22c55e':capacPct>=60?'#f59e0b':'#3b82f6';
+                        // Total sarje planificate / total sarje posibile in ziua combinata
+                        var totMax=combo.max1+combo.max2;
+                        capacPct=totMax>0?Math.round((s1+s2)/totMax*100):0;
+                        capacCol=capacPct>=95?'#22c55e':capacPct>=60?'#f59e0b':'#3b82f6';
                     } else if(p1&&!p2&&s1>0){
                         capacPct=Math.round(s1/p1.sarjeZi*100);
                         capacCol=capacPct>=95?'#22c55e':capacPct>=60?'#f59e0b':'#3b82f6';
@@ -1877,6 +1988,7 @@
             '<div class="kpi accent"><div class="kpi-label">Produse sub tampon</div><div class="kpi-value" style="color:#ef4444;">'+prodSubTampon+'</div><div class="kpi-sub">din '+PLAN_PRODUSE.length+' produse</div></div>'+
             '<div class="kpi red"><div class="kpi-label">Deficit total</div><div class="kpi-value">'+fmtN(totDeficit)+'</div><div class="kpi-sub">borcane sub stoc tampon</div></div>'+
             '<div class="kpi green"><div class="kpi-label">Planificat saptamana</div><div class="kpi-value">'+fmtN(totPlanBorcane)+'</div><div class="kpi-sub">borcane totale</div></div>';
+        renderNecesarMP();
     }
 
     function planClear(){
@@ -1954,6 +2066,34 @@
         '<h2>Sumar produse planificate</h2>'+
         '<table><thead><tr><th>Produs</th><th style="text-align:right;">Stoc actual</th><th style="text-align:right;">Stoc tampon</th><th style="text-align:right;">Deficit</th><th style="text-align:right;">Planificat</th></tr></thead>'+
         '<tbody>'+sumarHtml+'</tbody></table>'+
+        // Necesar Materie Prima in PDF
+        (function(){
+            var totMP={}, produsePeIngr={};
+            planDays.forEach(function(day){
+                [[day.prod1,day.sarje1],[day.prod2,day.sarje2]].forEach(function(pair){
+                    var pidx=pair[0], sarje=pair[1]||0;
+                    if(pidx<0||sarje===0)return;
+                    var p=PLAN_PRODUSE[pidx];
+                    var reteta=planGetReteta(p.nume);
+                    if(!reteta)return;
+                    for(var ingr in reteta){
+                        totMP[ingr]=(totMP[ingr]||0)+reteta[ingr]*sarje;
+                        if(!produsePeIngr[ingr])produsePeIngr[ingr]=[];
+                        if(produsePeIngr[ingr].indexOf(p.nume)<0)produsePeIngr[ingr].push(p.nume);
+                    }
+                });
+            });
+            var ingrs=Object.keys(totMP).sort();
+            if(!ingrs.length)return '';
+            var mpHtml='';
+            ingrs.forEach(function(ingr){
+                var kg=totMP[ingr];
+                var produse=(produsePeIngr[ingr]||[]).map(function(p){return p.replace(/ RAZVAN \d+G.*/i,'').replace(/RAZVAN/i,'').trim();}).join(', ');
+                mpHtml+='<tr><td>'+ingr+'</td><td style="text-align:right;font-weight:800;color:#b45309;">'+(kg>=1000?(kg/1000).toFixed(2)+' tone':kg.toFixed(1)+' kg')+'</td><td style="color:#6b7280;font-size:11px;">'+produse+'</td></tr>';
+            });
+            return '<h2>Necesar Materie Prima</h2>'+
+                '<table><thead><tr><th>Ingredient</th><th style="text-align:right;">Cantitate</th><th>Folosit in</th></tr></thead><tbody>'+mpHtml+'</tbody></table>';
+        })()+
         '<script>window.print();<\/script></body></html>';
 
         var w=window.open('','_blank');

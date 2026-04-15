@@ -1653,26 +1653,56 @@
                     var day=planDays[dayIdx];
                     var p1=day.prod1>=0?PLAN_PRODUSE[day.prod1]:null;
                     var p2=day.prod2>=0?PLAN_PRODUSE[day.prod2]:null;
-                    var b1=p1?(day.sarje1||0)*p1.cantSarje:0;
-                    var b2=p2?(day.sarje2||0)*p2.cantSarje:0;
+                    var s1=day.sarje1||0, s2=day.sarje2||0;
+                    var b1=p1?s1*p1.cantSarje:0;
+                    var b2=p2?s2*p2.cantSarje:0;
                     var totZi=b1+b2;
+
+                    // Capacitate zi: fractie folosita din zi
+                    var frac1=p1&&p1.sarjeZi>0?s1/p1.sarjeZi:0;
+                    var frac2=p2&&p2.sarjeZi>0?s2/p2.sarjeZi:0;
+                    var capacUsed=Math.min(1,frac1+frac2);
+                    var capacPct=Math.round(capacUsed*100);
+                    var capacCol=capacPct>100?'#ef4444':capacPct>=90?'#22c55e':capacPct>=50?'#f59e0b':'#3b82f6';
+
+                    // Max sarje P2 in functie de cat a ramas din zi dupa P1
+                    var ramZiDupaP1=p1&&p1.sarjeZi>0?Math.max(0,1-frac1):1;
+                    var maxS2=p2?Math.floor(p2.sarjeZi*ramZiDupaP1):99;
+
+                    // Max sarje P1 daca nu e P2: zi plina
+                    // Max sarje P1 daca e P2: in functie de cat a ramas dupa P2
+                    var ramZiDupaP2=p2&&p2.sarjeZi>0?Math.max(0,1-frac2):1;
+                    var maxS1=p1?(p2?Math.floor(p1.sarjeZi*ramZiDupaP2):p1.sarjeZi):99;
+
+                    // Text sugestie capacitate
+                    var capText='';
+                    if(p1&&!p2){capText='Zi plina: <strong>'+p1.sarjeZi+' sarje = '+fmtN(p1.borcanZi)+' buc</strong>';}
+                    else if(p1&&p2){
+                        var capColor=capacPct>100?'#ef4444':'#6b7280';
+                        capText='<span style="color:'+capColor+';">Zi folosita: <strong>'+capacPct+'%</strong>'+(capacPct>100?' ⚠ DEPASIT':'')+'</span>';
+                    }
+
                     var dateStr=dates[dayIdx]?planFmtDate(dates[dayIdx]):'';
                     var isToday=dates[dayIdx]&&dates[dayIdx].toDateString()===new Date().toDateString();
                     var tr=document.createElement('tr');
                     tr.style.cssText='border-bottom:1px solid #e4e7ec;'+(isToday?'background:#fff7ed;':'');
                     tr.innerHTML=
-                        // Zi
+                        // Zi + bara capacitate
                         '<td style="padding:10px 14px;font-weight:700;font-size:13px;'+(isToday?'color:#e85d04;':'color:#1a1a2e;')+'">'+
                             PLAN_ZI_NUME[dayIdx]+(dateStr?'<br><span style="font-size:11px;font-weight:400;color:#9ca3af;">'+dateStr+'</span>':'')+
+                            (capacPct>0?'<div style="margin-top:5px;width:80px;height:5px;background:#e5e7eb;border-radius:3px;"><div style="width:'+Math.min(100,capacPct)+'%;height:5px;background:'+capacCol+';border-radius:3px;"></div></div>'+
+                            '<div style="font-size:10px;color:'+capacCol+';margin-top:2px;">'+capacPct+'% zi</div>':'')+
                         '</td>'+
                         // Produs 1
-                        '<td style="padding:6px 10px;">'+planBuildSelect(day.prod1,dayIdx,'prod1')+'</td>'+
+                        '<td style="padding:6px 10px;">'+planBuildSelect(day.prod1,dayIdx,'prod1')+
+                            (capText?'<div style="font-size:11px;margin-top:3px;">'+capText+'</div>':'')+
+                        '</td>'+
                         // Sarje 1
                         '<td style="padding:6px 8px;text-align:center;">'+
-                            '<input type="number" min="0" max="'+(p1?p1.sarjeZi:99)+'" value="'+(day.sarje1||'')+'" placeholder="sarje" '+
+                            '<input type="number" min="0" max="'+maxS1+'" value="'+(s1||'')+'" placeholder="sarje" '+
                             'onchange="planSetSarje('+dayIdx+',\'sarje1\',this.value);renderPlanificare();" '+
-                            'style="width:60px;text-align:center;border:1px solid #e4e7ec;border-radius:5px;padding:4px;font-size:13px;font-weight:700;">'+
-                            (p1?'<div style="font-size:10px;color:#9ca3af;margin-top:2px;">max '+p1.sarjeZi+'</div>':'')+
+                            'style="width:60px;text-align:center;border:1px solid '+(s1>maxS1?'#ef4444':'#e4e7ec')+';border-radius:5px;padding:4px;font-size:13px;font-weight:700;">'+
+                            '<div style="font-size:10px;color:#9ca3af;margin-top:2px;">max '+(p1?maxS1:'—')+'</div>'+
                         '</td>'+
                         // Borcane 1
                         '<td style="padding:6px 10px;text-align:right;font-size:13px;font-weight:700;color:'+(b1>0?'#e85d04':'#d1d5db')+';">'+
@@ -1682,17 +1712,17 @@
                         '<td style="padding:6px 10px;background:#fafafa;">'+planBuildSelect(day.prod2,dayIdx,'prod2')+'</td>'+
                         // Sarje 2
                         '<td style="padding:6px 8px;text-align:center;background:#fafafa;">'+
-                            '<input type="number" min="0" max="'+(p2?p2.sarjeZi:99)+'" value="'+(day.sarje2||'')+'" placeholder="sarje" '+
+                            '<input type="number" min="0" max="'+maxS2+'" value="'+(s2||'')+'" placeholder="sarje" '+
                             'onchange="planSetSarje('+dayIdx+',\'sarje2\',this.value);renderPlanificare();" '+
-                            'style="width:60px;text-align:center;border:1px solid #e4e7ec;border-radius:5px;padding:4px;font-size:13px;font-weight:700;">'+
-                            (p2?'<div style="font-size:10px;color:#9ca3af;margin-top:2px;">max '+p2.sarjeZi+'</div>':'')+
+                            'style="width:60px;text-align:center;border:1px solid '+(p2&&s2>maxS2?'#ef4444':'#e4e7ec')+';border-radius:5px;padding:4px;font-size:13px;font-weight:700;">'+
+                            '<div style="font-size:10px;color:'+(maxS2===0&&p2?'#ef4444':'#9ca3af')+';margin-top:2px;">'+(p2?'max '+maxS2:'—')+(maxS2===0&&p2?' (zi plina)':'')+'</div>'+
                         '</td>'+
                         // Borcane 2
                         '<td style="padding:6px 10px;text-align:right;font-size:13px;font-weight:700;background:#fafafa;color:'+(b2>0?'#e85d04':'#d1d5db')+';">'+
                             (b2>0?fmtN(b2)+' buc':'—')+
                         '</td>'+
                         // Total zi
-                        '<td style="padding:6px 14px;text-align:right;font-size:14px;font-weight:800;color:'+(totZi>0?'#22c55e':'#d1d5db')+';">'+
+                        '<td style="padding:6px 14px;text-align:right;font-size:14px;font-weight:800;color:'+(totZi>0?(capacPct>100?'#ef4444':'#22c55e'):'#d1d5db')+';">'+
                             (totZi>0?fmtN(totZi)+' buc':'—')+
                         '</td>';
                     tbody.appendChild(tr);

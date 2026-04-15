@@ -1630,7 +1630,8 @@
     function initPlanificare(){
         var now=new Date(), day=now.getDay()||7;
         var monday=new Date(now);
-        monday.setDate(now.getDate()-(day-1));
+        // saptamana viitoare mereu
+        monday.setDate(now.getDate()-(day-1)+7);
         var sel=document.getElementById('planLuni');
         if(sel)sel.value=monday.toISOString().split('T')[0];
     }

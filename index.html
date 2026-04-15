@@ -1545,6 +1545,83 @@
     document.addEventListener('DOMContentLoaded',init);
 
     // =========== PLANIFICARE PRODUCTIE ===========
+    // === Combinatii cunoscute din foaia "Sarje combinate" ===
+    // Bidirectionale: se cauta (p1,p2) SAU (p2,p1)
+    var SARJE_COMBINATE_DEFAULT = [
+        {p1:'ZACUSCA DE VINETE RAZVAN 350G (BORCAN)',         max1:15, p2:'SILVOIZ DE PRUNE LA CEAUN FARA ZAHAR RAZVAN 380G', max2:2},
+        {p1:'ZACUSCA LA CEAUN PICANTA RAZVAN 350G',            max1:15, p2:'SILVOIZ DE PRUNE LA CEAUN FARA ZAHAR RAZVAN 380G', max2:2},
+        {p1:'ZACUSCA LA CEAUN CU GHEBE RAZVAN 350G',           max1:15, p2:'ZACUSCA DE VINETE RAZVAN 350G (BORCAN)',            max2:4},
+        {p1:'SALATA DE ARDEI CAPIA RAZVAN 320G',               max1:15, p2:'SILVOIZ DE PRUNE LA CEAUN FARA ZAHAR RAZVAN 380G', max2:2},
+        {p1:'SALATA DE VINETE RAZVAN 340G',                    max1:10, p2:'ZACUSCA DE VINETE RAZVAN 350G (BORCAN)',            max2:10},
+        {p1:'DULCEATA DE CAISE RAZVAN 380G',                   max1:15, p2:'DULCEATA DE CAPSUNI RAZVAN 380G',                  max2:10},
+        {p1:'DULCEATA DE VISINE RAZVAN 380G',                  max1:10, p2:'DULCEATA DE VISINE CU MIEZ DE NUCA RAZVAN 380G',   max2:10}
+    ];
+
+    // Combinatii salvate de utilizator (localStorage)
+    function planLoadCustomCombos(){
+        try{return JSON.parse(localStorage.getItem('planCombosCustom')||'[]');}catch(e){return [];}
+    }
+    function planSaveCustomCombos(arr){
+        try{localStorage.setItem('planCombosCustom',JSON.stringify(arr));}catch(e){}
+    }
+    function planGetAllCombos(){
+        return SARJE_COMBINATE_DEFAULT.concat(planLoadCustomCombos());
+    }
+
+    // Cauta combinatia (bidirectionala) → {max1, max2} sau null
+    function planFindCombo(numeP1, numeP2){
+        var all=planGetAllCombos();
+        for(var i=0;i<all.length;i++){
+            var c=all[i];
+            if(c.p1===numeP1&&c.p2===numeP2)return {max1:c.max1,max2:c.max2};
+            if(c.p1===numeP2&&c.p2===numeP1)return {max1:c.max2,max2:c.max1}; // inversat
+        }
+        return null;
+    }
+
+    // Arata modal pentru combinatie necunoscuta
+    function planAskCombo(numeP1, numeP2, callback){
+        var existing=document.getElementById('planComboModal');
+        if(existing)existing.remove();
+        var modal=document.createElement('div');
+        modal.id='planComboModal';
+        modal.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;';
+        modal.innerHTML=
+            '<div style="background:#fff;border-radius:12px;padding:28px;max-width:480px;width:90%;box-shadow:0 20px 60px rgba(0,0,0,0.3);">'+
+            '<h3 style="margin-bottom:8px;color:#1a1a2e;">Combinatie noua</h3>'+
+            '<p style="font-size:13px;color:#6b7280;margin-bottom:20px;">Aceasta combinatie nu exista in Sarje Combinate. Introdu maximele pentru o zi combinata:</p>'+
+            '<div style="background:#f9fafb;border-radius:8px;padding:14px;margin-bottom:16px;">'+
+                '<div style="font-size:12px;font-weight:600;color:#1a1a2e;margin-bottom:8px;">'+numeP1+'</div>'+
+                '<div style="display:flex;align-items:center;gap:8px;">'+
+                    '<label style="font-size:12px;color:#6b7280;">Max sarje:</label>'+
+                    '<input id="planComboM1" type="number" min="1" max="30" value="" style="width:70px;border:1px solid #e4e7ec;border-radius:6px;padding:6px;font-size:14px;font-weight:700;">'+
+                '</div>'+
+            '</div>'+
+            '<div style="background:#f0f9ff;border-radius:8px;padding:14px;margin-bottom:20px;">'+
+                '<div style="font-size:12px;font-weight:600;color:#1a1a2e;margin-bottom:8px;">'+numeP2+'</div>'+
+                '<div style="display:flex;align-items:center;gap:8px;">'+
+                    '<label style="font-size:12px;color:#6b7280;">Max sarje:</label>'+
+                    '<input id="planComboM2" type="number" min="1" max="30" value="" style="width:70px;border:1px solid #e4e7ec;border-radius:6px;padding:6px;font-size:14px;font-weight:700;">'+
+                '</div>'+
+            '</div>'+
+            '<div style="display:flex;gap:10px;justify-content:flex-end;">'+
+                '<button onclick="document.getElementById(\'planComboModal\').remove();" style="padding:8px 18px;border:1px solid #e4e7ec;border-radius:6px;background:#fff;color:#6b7280;font-size:13px;font-weight:600;cursor:pointer;">Anuleaza</button>'+
+                '<button id="planComboSave" style="padding:8px 18px;border:none;border-radius:6px;background:#e85d04;color:#fff;font-size:13px;font-weight:600;cursor:pointer;">Salveaza combinatia</button>'+
+            '</div>'+
+            '</div>';
+        document.body.appendChild(modal);
+        document.getElementById('planComboSave').onclick=function(){
+            var m1=parseInt(document.getElementById('planComboM1').value)||0;
+            var m2=parseInt(document.getElementById('planComboM2').value)||0;
+            if(m1<1||m2<1){alert('Introdu valori valide (minim 1).');return;}
+            var custom=planLoadCustomCombos();
+            custom.push({p1:numeP1,max1:m1,p2:numeP2,max2:m2});
+            planSaveCustomCombos(custom);
+            document.getElementById('planComboModal').remove();
+            if(callback)callback({max1:m1,max2:m2});
+        };
+    }
+
     var PLAN_PRODUSE = [
         {nume:'ZACUSCA DE VINETE RAZVAN 350G (BORCAN)',        cantSarje:105, sarjeZi:16, borcanZi:1680, stocTampon:3000},
         {nume:'ZACUSCA LA CEAUN PICANTA RAZVAN 350G',           cantSarje:75,  sarjeZi:15, borcanZi:1125, stocTampon:2000},
@@ -1658,28 +1735,53 @@
                     var b2=p2?s2*p2.cantSarje:0;
                     var totZi=b1+b2;
 
-                    // Capacitate zi: fractie folosita din zi
-                    var frac1=p1&&p1.sarjeZi>0?s1/p1.sarjeZi:0;
-                    var frac2=p2&&p2.sarjeZi>0?s2/p2.sarjeZi:0;
-                    var capacUsed=Math.min(1,frac1+frac2);
-                    var capacPct=Math.round(capacUsed*100);
-                    var capacCol=capacPct>100?'#ef4444':capacPct>=90?'#22c55e':capacPct>=50?'#f59e0b':'#3b82f6';
+                    // === LOOKUP SARJE COMBINATE ===
+                    var combo=null, maxS1, maxS2, capText='', comboLabel='';
+                    if(p1&&p2){
+                        combo=planFindCombo(p1.nume,p2.nume);
+                        if(combo){
+                            maxS1=combo.max1; maxS2=combo.max2;
+                            comboLabel='<span style="color:#22c55e;font-size:11px;">✓ combinatie cunoscuta</span>';
+                        } else {
+                            // Combinatie necunoscuta — arata buton de configurare
+                            maxS1=p1.sarjeZi; maxS2=p2.sarjeZi;
+                            comboLabel='<span style="color:#f59e0b;font-size:11px;cursor:pointer;" '+
+                                'onclick="planAskCombo(\''+p1.nume.replace(/'/g,"\\'")+'\',' +
+                                '\''+p2.nume.replace(/'/g,"\\'")+'\',function(r){renderPlanificare();});">'+
+                                '⚠ combinatie necunoscuta — click pentru a configura</span>';
+                            // Daca nu e inca setat in localStorage, triggereaza automat
+                            if(s1>0||s2>0){
+                                // Nu re-triggera daca e deja deschis
+                                if(!document.getElementById('planComboModal')){
+                                    (function(n1,n2){setTimeout(function(){
+                                        if(!planFindCombo(n1,n2)&&!document.getElementById('planComboModal'))
+                                            planAskCombo(n1,n2,function(){renderPlanificare();});
+                                    },100);})(p1.nume,p2.nume);
+                                }
+                            }
+                        }
+                    } else {
+                        maxS1=p1?p1.sarjeZi:99; maxS2=p2?p2.sarjeZi:99;
+                    }
 
-                    // Max sarje P2 in functie de cat a ramas din zi dupa P1
-                    var ramZiDupaP1=p1&&p1.sarjeZi>0?Math.max(0,1-frac1):1;
-                    var maxS2=p2?Math.floor(p2.sarjeZi*ramZiDupaP1):99;
+                    // Bara capacitate: raportat la maximele combinatiei
+                    var capacPct=0, capacCol='#3b82f6';
+                    if(p1&&p2&&combo){
+                        var pct1=combo.max1>0?s1/combo.max1:0;
+                        var pct2=combo.max2>0?s2/combo.max2:0;
+                        capacPct=Math.round(Math.max(pct1,pct2)*100);
+                        capacCol=capacPct>=100?'#22c55e':capacPct>=60?'#f59e0b':'#3b82f6';
+                    } else if(p1&&!p2&&s1>0){
+                        capacPct=Math.round(s1/p1.sarjeZi*100);
+                        capacCol=capacPct>=95?'#22c55e':capacPct>=60?'#f59e0b':'#3b82f6';
+                    }
 
-                    // Max sarje P1 daca nu e P2: zi plina
-                    // Max sarje P1 daca e P2: in functie de cat a ramas dupa P2
-                    var ramZiDupaP2=p2&&p2.sarjeZi>0?Math.max(0,1-frac2):1;
-                    var maxS1=p1?(p2?Math.floor(p1.sarjeZi*ramZiDupaP2):p1.sarjeZi):99;
-
-                    // Text sugestie capacitate
-                    var capText='';
-                    if(p1&&!p2){capText='Zi plina: <strong>'+p1.sarjeZi+' sarje = '+fmtN(p1.borcanZi)+' buc</strong>';}
-                    else if(p1&&p2){
-                        var capColor=capacPct>100?'#ef4444':'#6b7280';
-                        capText='<span style="color:'+capColor+';">Zi folosita: <strong>'+capacPct+'%</strong>'+(capacPct>100?' ⚠ DEPASIT':'')+'</span>';
+                    if(p1&&!p2){
+                        capText='Zi plina: <strong>'+p1.sarjeZi+' sarje = '+fmtN(p1.borcanZi)+' buc</strong>';
+                    } else if(p1&&p2&&combo){
+                        capText=comboLabel;
+                    } else if(p1&&p2&&!combo){
+                        capText=comboLabel;
                     }
 
                     var dateStr=dates[dayIdx]?planFmtDate(dates[dayIdx]):'';
@@ -1691,18 +1793,18 @@
                         '<td style="padding:10px 14px;font-weight:700;font-size:13px;'+(isToday?'color:#e85d04;':'color:#1a1a2e;')+'">'+
                             PLAN_ZI_NUME[dayIdx]+(dateStr?'<br><span style="font-size:11px;font-weight:400;color:#9ca3af;">'+dateStr+'</span>':'')+
                             (capacPct>0?'<div style="margin-top:5px;width:80px;height:5px;background:#e5e7eb;border-radius:3px;"><div style="width:'+Math.min(100,capacPct)+'%;height:5px;background:'+capacCol+';border-radius:3px;"></div></div>'+
-                            '<div style="font-size:10px;color:'+capacCol+';margin-top:2px;">'+capacPct+'% zi</div>':'')+
+                            '<div style="font-size:10px;color:'+capacCol+';margin-top:2px;">'+capacPct+'%</div>':'')+
                         '</td>'+
                         // Produs 1
                         '<td style="padding:6px 10px;">'+planBuildSelect(day.prod1,dayIdx,'prod1')+
-                            (capText?'<div style="font-size:11px;margin-top:3px;">'+capText+'</div>':'')+
+                            (capText?'<div style="margin-top:3px;">'+capText+'</div>':'')+
                         '</td>'+
                         // Sarje 1
                         '<td style="padding:6px 8px;text-align:center;">'+
                             '<input type="number" min="0" max="'+maxS1+'" value="'+(s1||'')+'" placeholder="sarje" '+
                             'onchange="planSetSarje('+dayIdx+',\'sarje1\',this.value);renderPlanificare();" '+
                             'style="width:60px;text-align:center;border:1px solid '+(s1>maxS1?'#ef4444':'#e4e7ec')+';border-radius:5px;padding:4px;font-size:13px;font-weight:700;">'+
-                            '<div style="font-size:10px;color:#9ca3af;margin-top:2px;">max '+(p1?maxS1:'—')+'</div>'+
+                            '<div style="font-size:10px;color:'+(s1>maxS1?'#ef4444':'#9ca3af')+';margin-top:2px;">max '+(p1?maxS1:'—')+'</div>'+
                         '</td>'+
                         // Borcane 1
                         '<td style="padding:6px 10px;text-align:right;font-size:13px;font-weight:700;color:'+(b1>0?'#e85d04':'#d1d5db')+';">'+
@@ -1715,14 +1817,14 @@
                             '<input type="number" min="0" max="'+maxS2+'" value="'+(s2||'')+'" placeholder="sarje" '+
                             'onchange="planSetSarje('+dayIdx+',\'sarje2\',this.value);renderPlanificare();" '+
                             'style="width:60px;text-align:center;border:1px solid '+(p2&&s2>maxS2?'#ef4444':'#e4e7ec')+';border-radius:5px;padding:4px;font-size:13px;font-weight:700;">'+
-                            '<div style="font-size:10px;color:'+(maxS2===0&&p2?'#ef4444':'#9ca3af')+';margin-top:2px;">'+(p2?'max '+maxS2:'—')+(maxS2===0&&p2?' (zi plina)':'')+'</div>'+
+                            '<div style="font-size:10px;color:'+(p2&&s2>maxS2?'#ef4444':'#9ca3af')+';margin-top:2px;">'+(p2?'max '+maxS2:'—')+'</div>'+
                         '</td>'+
                         // Borcane 2
                         '<td style="padding:6px 10px;text-align:right;font-size:13px;font-weight:700;background:#fafafa;color:'+(b2>0?'#e85d04':'#d1d5db')+';">'+
                             (b2>0?fmtN(b2)+' buc':'—')+
                         '</td>'+
                         // Total zi
-                        '<td style="padding:6px 14px;text-align:right;font-size:14px;font-weight:800;color:'+(totZi>0?(capacPct>100?'#ef4444':'#22c55e'):'#d1d5db')+';">'+
+                        '<td style="padding:6px 14px;text-align:right;font-size:14px;font-weight:800;color:'+(totZi>0?'#22c55e':'#d1d5db')+';">'+
                             (totZi>0?fmtN(totZi)+' buc':'—')+
                         '</td>';
                     tbody.appendChild(tr);

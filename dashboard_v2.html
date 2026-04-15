@@ -406,12 +406,14 @@
                     <span style="font-size:12px;color:#6b7280;">calculat din retete × sarje planificate</span>
                 </div>
                 <div style="overflow-x:auto;">
-                <table style="min-width:600px;">
+                <table style="min-width:750px;">
                     <thead>
                         <tr style="background:#f3f4f6;">
                             <th style="text-align:left;padding:8px 14px;">Materie prima</th>
-                            <th style="text-align:right;padding:8px 12px;">Cantitate necesara</th>
-                            <th style="text-align:left;padding:8px 12px;color:#6b7280;font-weight:400;">Folosita in</th>
+                            <th style="text-align:right;padding:8px 12px;">Necesar</th>
+                            <th style="text-align:right;padding:8px 12px;">Stoc actual</th>
+                            <th style="text-align:right;padding:8px 12px;">De comandat</th>
+                            <th style="text-align:left;padding:8px 12px;color:#6b7280;font-weight:400;font-size:11px;">Folosita in</th>
                         </tr>
                     </thead>
                     <tbody id="planMPBody"></tbody>
@@ -1597,6 +1599,44 @@
         return null;
     }
 
+    // Cauta stocul de materie prima din WinMentor dupa numele ingredientului
+    function planGetStocMP(ingrName){
+        var stoc=WINMENTOR_DATA.stoc||[];
+        var nuUp=ingrName.toUpperCase();
+        var best=null, bestScore=0;
+        stoc.forEach(function(s){
+            var sUp=(s.denumire||'').toUpperCase();
+            // Cauta doar materii prime si ambalaje
+            var tip=(s.tip||'').toLowerCase();
+            if(tip.indexOf('materii')<0&&tip.indexOf('prime')<0&&tip.indexOf('ambalaj')<0&&tip.indexOf('mp')<0) return;
+            // Potrivire: ingredientul trebuie sa apara in denumire
+            if(sUp.indexOf(nuUp)>=0){
+                var sc=nuUp.length/sUp.length; // mai specific = mai bun
+                if(sc>bestScore){bestScore=sc;best=s;}
+            }
+            // Sau variante: VINETE → VINETE COAPTE, ARDEI → ARDEI COPT etc.
+            var w1=nuUp.split(/\s+/);
+            var mc=w1.filter(function(w){return w.length>3&&sUp.indexOf(w)>=0;}).length;
+            if(mc>0&&mc/w1.length>bestScore){bestScore=mc/w1.length;best=s;}
+        });
+        // Fallback: cauta in tot stocul daca nu gasit in MP
+        if(!best||bestScore<0.3){
+            stoc.forEach(function(s){
+                var sUp=(s.denumire||'').toUpperCase();
+                if(sUp.indexOf(nuUp)>=0){
+                    var sc=nuUp.length/sUp.length;
+                    if(sc>bestScore){bestScore=sc;best=s;}
+                }
+            });
+        }
+        return (best&&bestScore>0.25)?Math.round((best.cantitate||0)*10)/10:null;
+    }
+
+    function fmtKg(kg){
+        if(kg===null||kg===undefined)return '—';
+        return kg>=1000?(kg/1000).toFixed(2)+' t':kg.toFixed(1)+' kg';
+    }
+
     function renderNecesarMP(){
         // Calculeaza total ingrediente din toate zilele planificate
         var totMP={}, produsePeIngr={};
@@ -1608,8 +1648,7 @@
                 var reteta=planGetReteta(p.nume);
                 if(!reteta)return;
                 for(var ingr in reteta){
-                    var kg=reteta[ingr]*sarje;
-                    totMP[ingr]=(totMP[ingr]||0)+kg;
+                    totMP[ingr]=(totMP[ingr]||0)+reteta[ingr]*sarje;
                     if(!produsePeIngr[ingr])produsePeIngr[ingr]=[];
                     if(produsePeIngr[ingr].indexOf(p.nume)<0)produsePeIngr[ingr].push(p.nume);
                 }
@@ -1622,23 +1661,40 @@
 
         var ingrs=Object.keys(totMP).sort();
         if(ingrs.length===0){
-            tbody.innerHTML='<tr><td colspan="3" style="padding:16px;text-align:center;color:#9ca3af;">Planifica productia mai sus pentru a vedea necesarul de materie prima.</td></tr>';
+            tbody.innerHTML='<tr><td colspan="5" style="padding:16px;text-align:center;color:#9ca3af;">Planifica productia mai sus pentru a vedea necesarul de materie prima.</td></tr>';
             return;
         }
 
+        var totDeOrdonat=0;
         ingrs.forEach(function(ingr){
-            var kg=totMP[ingr];
-            var produse=produsePeIngr[ingr]||[];
+            var necesar=totMP[ingr];
+            var stocAct=planGetStocMP(ingr);
+            var deOrdonat=stocAct!==null?Math.max(0,necesar-stocAct):null;
+            if(deOrdonat!==null&&deOrdonat>0)totDeOrdonat++;
+
+            var produse=(produsePeIngr[ingr]||[]).map(function(p){
+                return p.replace(/ RAZVAN \d+G.*$/i,'').replace(/RAZVAN/i,'').trim();
+            }).join(', ');
+
+            var needsOrder=deOrdonat!==null&&deOrdonat>0;
+            var stocSuficient=stocAct!==null&&stocAct>=necesar;
+
             var tr=document.createElement('tr');
-            tr.style.cssText='border-bottom:1px solid #f3f4f6;';
+            tr.style.cssText='border-bottom:1px solid #f3f4f6;'+(needsOrder?'background:#fff7ed;':'');
             tr.innerHTML=
-                '<td style="padding:9px 14px;font-weight:700;font-size:13px;">'+ingr+'</td>'+
-                '<td style="text-align:right;padding:9px 12px;font-size:15px;font-weight:800;color:#e85d04;">'+
-                    (kg>=1000?(kg/1000).toFixed(2)+' tone':kg.toFixed(1)+' kg')+
+                '<td style="padding:9px 14px;font-weight:700;font-size:13px;">'+
+                    (needsOrder?'🔴 ':'🟢 ')+ingr+
                 '</td>'+
-                '<td style="padding:9px 12px;font-size:11px;color:#6b7280;">'+
-                    produse.map(function(p){return p.replace(/ RAZVAN \d+G.*$/i,'').replace(/RAZVAN/i,'').trim();}).join(', ')+
-                '</td>';
+                '<td style="text-align:right;padding:9px 12px;font-size:14px;font-weight:800;color:#e85d04;">'+
+                    fmtKg(necesar)+
+                '</td>'+
+                '<td style="text-align:right;padding:9px 12px;font-size:14px;font-weight:700;color:'+(stocAct===null?'#9ca3af':stocSuficient?'#22c55e':'#ef4444')+';">'+
+                    (stocAct!==null?fmtKg(stocAct):'—')+
+                '</td>'+
+                '<td style="text-align:right;padding:9px 12px;font-size:14px;font-weight:800;color:'+(needsOrder?'#dc2626':deOrdonat===0?'#22c55e':'#9ca3af')+';">'+
+                    (deOrdonat!==null?(deOrdonat>0?fmtKg(deOrdonat):'OK'):'—')+
+                '</td>'+
+                '<td style="padding:9px 12px;font-size:11px;color:#6b7280;">'+produse+'</td>';
             tbody.appendChild(tr);
         });
     }
@@ -2089,10 +2145,16 @@
             ingrs.forEach(function(ingr){
                 var kg=totMP[ingr];
                 var produse=(produsePeIngr[ingr]||[]).map(function(p){return p.replace(/ RAZVAN \d+G.*/i,'').replace(/RAZVAN/i,'').trim();}).join(', ');
-                mpHtml+='<tr><td>'+ingr+'</td><td style="text-align:right;font-weight:800;color:#b45309;">'+(kg>=1000?(kg/1000).toFixed(2)+' tone':kg.toFixed(1)+' kg')+'</td><td style="color:#6b7280;font-size:11px;">'+produse+'</td></tr>';
+                var stocAct=planGetStocMP(ingr);
+                var deOrd=stocAct!==null?Math.max(0,kg-stocAct):null;
+                mpHtml+='<tr'+(deOrd>0?' style="background:#fff7ed;"':'')+'><td>'+(deOrd>0?'⚠ ':'')+ingr+'</td>'+
+                    '<td style="text-align:right;font-weight:800;color:#b45309;">'+(kg>=1000?(kg/1000).toFixed(2)+' t':kg.toFixed(1)+' kg')+'</td>'+
+                    '<td style="text-align:right;color:'+(stocAct===null?'#999':stocAct>=kg?'#16a34a':'#dc2626')+';font-weight:700;">'+(stocAct!==null?(stocAct>=1000?(stocAct/1000).toFixed(2)+' t':stocAct.toFixed(1)+' kg'):'—')+'</td>'+
+                    '<td style="text-align:right;font-weight:800;color:'+(deOrd>0?'#dc2626':'#16a34a')+'">'+(deOrd!==null?(deOrd>0?(deOrd>=1000?(deOrd/1000).toFixed(2)+' t':deOrd.toFixed(1)+' kg'):'OK'):'—')+'</td>'+
+                    '<td style="color:#6b7280;font-size:11px;">'+produse+'</td></tr>';
             });
             return '<h2>Necesar Materie Prima</h2>'+
-                '<table><thead><tr><th>Ingredient</th><th style="text-align:right;">Cantitate</th><th>Folosit in</th></tr></thead><tbody>'+mpHtml+'</tbody></table>';
+                '<table><thead><tr><th>Ingredient</th><th style="text-align:right;">Necesar</th><th style="text-align:right;">Stoc actual</th><th style="text-align:right;">De comandat</th><th>Folosit in</th></tr></thead><tbody>'+mpHtml+'</tbody></table>';
         })()+
         '<script>window.print();<\/script></body></html>';
 

@@ -502,32 +502,17 @@
         var isAll = period === 'all';
         var selLuna = isAll ? 0 : parseInt(period);
 
-        // CA — calculat direct din vanzari (IESIRI) pentru acuratete maxima
-        // NCONT.DB (balanta) se actualizeaza doar la recalcul manual in WinMentor
+        // CA — din balanta contabila (701-708 minus 709), calculat corect in extrage_date.ps1
         var caVal = 0, caPrevVal = 0, caLabel = '';
-        var tipOkCA = {'19':1,'22':1,'26':1};
-        var vanzari = D.vanzari || [];
-        vanzari.forEach(function(v) {
-            var tip = (v.tip_doc||'').toString();
-            if (!tipOkCA[tip]) return;
-            var lv = parseInt((v.data||'').substring(5,7));
-            if (isAll) { caVal += v.valoare||0; }
-            else {
-                if (lv === selLuna) caVal += v.valoare||0;
-                else if (lv === selLuna - 1) caPrevVal += v.valoare||0;
-            }
-        });
-        // Fallback pe balanta daca nu avem vanzari
-        if (caVal === 0) {
-            if (isAll) {
-                var lastBl = bl.length > 0 ? bl[bl.length - 1] : {};
-                caVal = lastBl.cifra_afaceri_cumulat || 0;
-            } else {
-                bl.forEach(function(b) { if (b.luna === selLuna) caVal = b.cifra_afaceri || 0; });
-                bl.forEach(function(b) { if (b.luna === selLuna - 1) caPrevVal = b.cifra_afaceri || 0; });
-            }
+        if (isAll) {
+            var lastBl = bl.length > 0 ? bl[bl.length - 1] : {};
+            caVal = lastBl.cifra_afaceri_cumulat || 0;
+            caLabel = 'Tot anul';
+        } else {
+            bl.forEach(function(b) { if (b.luna === selLuna) caVal = b.cifra_afaceri || 0; });
+            bl.forEach(function(b) { if (b.luna === selLuna - 1) caPrevVal = b.cifra_afaceri || 0; });
+            caLabel = luniNume[selLuna] || '';
         }
-        if (isAll) caLabel = 'Tot anul'; else caLabel = luniNume[selLuna] || '';
         var caChange = caPrevVal > 0 ? ((caVal - caPrevVal) / caPrevVal * 100).toFixed(1) : 0;
 
         // Monetar (filtrat pe luna selectata sau tot anul)

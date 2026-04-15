@@ -1600,36 +1600,75 @@
     }
 
     // Cauta stocul de materie prima din WinMentor dupa numele ingredientului
-    function planGetStocMP(ingrName){
+    // Mapping salvat: {ingrName: winmentorDenumire}
+    function planLoadMPMapping(){try{return JSON.parse(localStorage.getItem('planMPMapping')||'{}');}catch(e){return {};}}
+    function planSaveMPMapping(map){try{localStorage.setItem('planMPMapping',JSON.stringify(map));}catch(e){}}
+
+    function planGetStocMPByDenumire(denumire){
         var stoc=WINMENTOR_DATA.stoc||[];
-        var nuUp=ingrName.toUpperCase();
+        for(var i=0;i<stoc.length;i++){
+            if(stoc[i].denumire===denumire)return Math.round((stoc[i].cantitate||0)*10)/10;
+        }
+        return null;
+    }
+
+    function planGetStocMP(ingrName){
+        // 1. Verifica mapping salvat de utilizator
+        var map=planLoadMPMapping();
+        if(map[ingrName]){
+            var val=planGetStocMPByDenumire(map[ingrName]);
+            if(val!==null)return val;
+        }
+        // 2. Auto-match fuzzy
+        var stoc=WINMENTOR_DATA.stoc||[], nuUp=ingrName.toUpperCase();
         var best=null, bestScore=0;
         stoc.forEach(function(s){
             var sUp=(s.denumire||'').toUpperCase();
-            // Cauta doar materii prime si ambalaje
             var tip=(s.tip||'').toLowerCase();
-            if(tip.indexOf('materii')<0&&tip.indexOf('prime')<0&&tip.indexOf('ambalaj')<0&&tip.indexOf('mp')<0) return;
-            // Potrivire: ingredientul trebuie sa apara in denumire
-            if(sUp.indexOf(nuUp)>=0){
-                var sc=nuUp.length/sUp.length; // mai specific = mai bun
-                if(sc>bestScore){bestScore=sc;best=s;}
-            }
-            // Sau variante: VINETE → VINETE COAPTE, ARDEI → ARDEI COPT etc.
+            if(tip.indexOf('materii')<0&&tip.indexOf('prime')<0&&tip.indexOf('ambalaj')<0&&tip.indexOf('mp')<0)return;
+            if(sUp.indexOf(nuUp)>=0){var sc=nuUp.length/sUp.length;if(sc>bestScore){bestScore=sc;best=s;}}
             var w1=nuUp.split(/\s+/);
             var mc=w1.filter(function(w){return w.length>3&&sUp.indexOf(w)>=0;}).length;
             if(mc>0&&mc/w1.length>bestScore){bestScore=mc/w1.length;best=s;}
         });
-        // Fallback: cauta in tot stocul daca nu gasit in MP
         if(!best||bestScore<0.3){
             stoc.forEach(function(s){
                 var sUp=(s.denumire||'').toUpperCase();
-                if(sUp.indexOf(nuUp)>=0){
-                    var sc=nuUp.length/sUp.length;
-                    if(sc>bestScore){bestScore=sc;best=s;}
-                }
+                if(sUp.indexOf(nuUp)>=0){var sc=nuUp.length/sUp.length;if(sc>bestScore){bestScore=sc;best=s;}}
             });
         }
         return (best&&bestScore>0.25)?Math.round((best.cantitate||0)*10)/10:null;
+    }
+
+    // Returneaza denumirea WinMentor gasita (pentru a sti daca e auto sau manual)
+    function planGetStocMPDenumire(ingrName){
+        var map=planLoadMPMapping();
+        if(map[ingrName])return {denumire:map[ingrName],sursa:'manual'};
+        var stoc=WINMENTOR_DATA.stoc||[], nuUp=ingrName.toUpperCase();
+        var best=null, bestScore=0;
+        stoc.forEach(function(s){
+            var sUp=(s.denumire||'').toUpperCase();
+            var tip=(s.tip||'').toLowerCase();
+            if(tip.indexOf('materii')<0&&tip.indexOf('prime')<0&&tip.indexOf('ambalaj')<0&&tip.indexOf('mp')<0)return;
+            if(sUp.indexOf(nuUp)>=0){var sc=nuUp.length/sUp.length;if(sc>bestScore){bestScore=sc;best=s;}}
+            var w1=nuUp.split(/\s+/);
+            var mc=w1.filter(function(w){return w.length>3&&sUp.indexOf(w)>=0;}).length;
+            if(mc>0&&mc/w1.length>bestScore){bestScore=mc/w1.length;best=s;}
+        });
+        if(!best||bestScore<0.3){
+            stoc.forEach(function(s){
+                var sUp=(s.denumire||'').toUpperCase();
+                if(sUp.indexOf(nuUp)>=0){var sc=nuUp.length/sUp.length;if(sc>bestScore){bestScore=sc;best=s;}}
+            });
+        }
+        return (best&&bestScore>0.25)?{denumire:best.denumire,sursa:'auto'}:null;
+    }
+
+    function planSaveIngrMapping(ingrName, winDenumire){
+        var map=planLoadMPMapping();
+        map[ingrName]=winDenumire;
+        planSaveMPMapping(map);
+        renderNecesarMP();
     }
 
     function fmtKg(kg){
@@ -1637,8 +1676,34 @@
         return kg>=1000?(kg/1000).toFixed(2)+' t':kg.toFixed(1)+' kg';
     }
 
+    // Construieste selectorul WinMentor pentru un ingredient nemapabil
+    function planBuildMPSelect(ingrName, selectedDenumire){
+        var stoc=WINMENTOR_DATA.stoc||[];
+        // Sorteaza: mai intai MP, apoi restul
+        var items=stoc.slice().sort(function(a,b){
+            var ta=(a.tip||'').toLowerCase(), tb=(b.tip||'').toLowerCase();
+            var isMP_a=ta.indexOf('materii')>=0||ta.indexOf('prime')>=0;
+            var isMP_b=tb.indexOf('materii')>=0||tb.indexOf('prime')>=0;
+            if(isMP_a&&!isMP_b)return -1;
+            if(!isMP_a&&isMP_b)return 1;
+            return (a.denumire||'').localeCompare(b.denumire||'','ro');
+        });
+        var ingrEsc=ingrName.replace(/'/g,"\\'");
+        var sel='<select onchange="planSaveIngrMapping(\''+ingrEsc+'\',this.value)" '+
+            'style="font-size:11px;padding:3px 6px;border:1px solid #f59e0b;border-radius:5px;background:#fffbeb;max-width:220px;cursor:pointer;" '+
+            'title="Selecteaza produsul corespunzator din WinMentor">'+
+            '<option value="">— alege din WinMentor —</option>';
+        items.forEach(function(s){
+            if(!s.denumire||s.cantitate===undefined)return;
+            var isSelected=s.denumire===selectedDenumire;
+            sel+='<option value="'+s.denumire.replace(/"/g,'&quot;')+'"'+(isSelected?' selected':'')+'>'+
+                s.denumire+' ('+Math.round(s.cantitate*10)/10+' '+s.um+')'+'</option>';
+        });
+        sel+='</select>';
+        return sel;
+    }
+
     function renderNecesarMP(){
-        // Calculeaza total ingrediente din toate zilele planificate
         var totMP={}, produsePeIngr={};
         planDays.forEach(function(day){
             [[day.prod1,day.sarje1],[day.prod2,day.sarje2]].forEach(function(pair){
@@ -1665,34 +1730,47 @@
             return;
         }
 
-        var totDeOrdonat=0;
         ingrs.forEach(function(ingr){
             var necesar=totMP[ingr];
-            var stocAct=planGetStocMP(ingr);
+            var match=planGetStocMPDenumire(ingr);
+            var stocAct=match?planGetStocMPByDenumire(match.denumire):null;
+            var notFound=match===null;
             var deOrdonat=stocAct!==null?Math.max(0,necesar-stocAct):null;
-            if(deOrdonat!==null&&deOrdonat>0)totDeOrdonat++;
-
+            var needsOrder=deOrdonat!==null&&deOrdonat>0;
+            var stocSuficient=stocAct!==null&&stocAct>=necesar;
             var produse=(produsePeIngr[ingr]||[]).map(function(p){
                 return p.replace(/ RAZVAN \d+G.*$/i,'').replace(/RAZVAN/i,'').trim();
             }).join(', ');
 
-            var needsOrder=deOrdonat!==null&&deOrdonat>0;
-            var stocSuficient=stocAct!==null&&stocAct>=necesar;
-
             var tr=document.createElement('tr');
-            tr.style.cssText='border-bottom:1px solid #f3f4f6;'+(needsOrder?'background:#fff7ed;':'');
+            tr.style.cssText='border-bottom:1px solid #f3f4f6;'+(needsOrder?'background:#fff7ed;':notFound?'background:#fefce8;':'');
+
+            // Coloana stoc: daca nu e gasit → afiseaza selector
+            var stocCell;
+            if(notFound){
+                stocCell='<td style="padding:6px 12px;">'+planBuildMPSelect(ingr,'')+
+                    '<div style="font-size:10px;color:#f59e0b;margin-top:2px;">Nu a fost gasit automat</div></td>';
+            } else if(match.sursa==='auto'){
+                stocCell='<td style="padding:6px 12px;">'+
+                    '<div style="font-size:14px;font-weight:700;color:'+(stocSuficient?'#22c55e':'#ef4444')+';">'+fmtKg(stocAct)+'</div>'+
+                    '<div style="margin-top:2px;">'+planBuildMPSelect(ingr,match.denumire)+'</div>'+
+                    '<div style="font-size:10px;color:#9ca3af;">auto: '+match.denumire+'</div>'+
+                '</td>';
+            } else {
+                stocCell='<td style="padding:6px 12px;">'+
+                    '<div style="font-size:14px;font-weight:700;color:'+(stocSuficient?'#22c55e':'#ef4444')+';">'+fmtKg(stocAct)+'</div>'+
+                    '<div style="margin-top:2px;">'+planBuildMPSelect(ingr,match.denumire)+'</div>'+
+                '</td>';
+            }
+
             tr.innerHTML=
                 '<td style="padding:9px 14px;font-weight:700;font-size:13px;">'+
-                    (needsOrder?'🔴 ':'🟢 ')+ingr+
+                    (notFound?'⚪ ':needsOrder?'🔴 ':'🟢 ')+ingr+
                 '</td>'+
-                '<td style="text-align:right;padding:9px 12px;font-size:14px;font-weight:800;color:#e85d04;">'+
-                    fmtKg(necesar)+
-                '</td>'+
-                '<td style="text-align:right;padding:9px 12px;font-size:14px;font-weight:700;color:'+(stocAct===null?'#9ca3af':stocSuficient?'#22c55e':'#ef4444')+';">'+
-                    (stocAct!==null?fmtKg(stocAct):'—')+
-                '</td>'+
-                '<td style="text-align:right;padding:9px 12px;font-size:14px;font-weight:800;color:'+(needsOrder?'#dc2626':deOrdonat===0?'#22c55e':'#9ca3af')+';">'+
-                    (deOrdonat!==null?(deOrdonat>0?fmtKg(deOrdonat):'OK'):'—')+
+                '<td style="text-align:right;padding:9px 12px;font-size:14px;font-weight:800;color:#e85d04;">'+fmtKg(necesar)+'</td>'+
+                stocCell+
+                '<td style="text-align:right;padding:9px 12px;font-size:14px;font-weight:800;color:'+(notFound?'#9ca3af':needsOrder?'#dc2626':'#22c55e')+';">'+
+                    (notFound?'—':deOrdonat>0?fmtKg(deOrdonat):'OK')+
                 '</td>'+
                 '<td style="padding:9px 12px;font-size:11px;color:#6b7280;">'+produse+'</td>';
             tbody.appendChild(tr);
@@ -1700,16 +1778,167 @@
     }
 
     function planSaveJpeg(){
-        var el=document.getElementById('planificare');
-        if(!el){alert('Sectiunea planificare nu a fost gasita.');return;}
         if(typeof html2canvas==='undefined'){alert('html2canvas nu este incarcat.');return;}
         var mondayStr=document.getElementById('planLuni')?document.getElementById('planLuni').value:'';
-        html2canvas(el,{scale:2,backgroundColor:'#f0f2f5',useCORS:true}).then(function(canvas){
+        var dates=mondayStr?planGetWeekDates(mondayStr):[];
+        var weekLabel=dates.length?(planFmtDate(dates[0])+' \u2014 '+planFmtDate(dates[4])):'';
+
+        // Calculeaza totaluri pentru materie prima
+        var totMP={}, produsePeIngr={};
+        planDays.forEach(function(day){
+            [[day.prod1,day.sarje1],[day.prod2,day.sarje2]].forEach(function(pair){
+                var pidx=pair[0], sarje=pair[1]||0;
+                if(pidx<0||sarje===0)return;
+                var p=PLAN_PRODUSE[pidx], reteta=planGetReteta(p.nume);
+                if(!reteta)return;
+                for(var ingr in reteta){
+                    totMP[ingr]=(totMP[ingr]||0)+reteta[ingr]*sarje;
+                    if(!produsePeIngr[ingr])produsePeIngr[ingr]=[];
+                    if(produsePeIngr[ingr].indexOf(p.nume)<0)produsePeIngr[ingr].push(p.nume);
+                }
+            });
+        });
+
+        // Construieste div-ul de captura
+        var wrap=document.createElement('div');
+        wrap.id='planJpegWrap';
+        wrap.style.cssText='position:fixed;left:-9999px;top:0;width:900px;background:#fff;font-family:Arial,sans-serif;padding:32px;box-sizing:border-box;';
+
+        // === HEADER ===
+        var headerHtml=
+            '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;padding-bottom:16px;border-bottom:3px solid #e85d04;">'+
+                '<div>'+
+                    '<div style="font-size:22px;font-weight:800;color:#e85d04;letter-spacing:1px;">RAZVAN IDICEL</div>'+
+                    '<div style="font-size:13px;color:#6b7280;margin-top:2px;">Plan de Productie</div>'+
+                '</div>'+
+                '<div style="text-align:right;">'+
+                    '<div style="font-size:18px;font-weight:700;color:#1a1a2e;">'+weekLabel+'</div>'+
+                    '<div style="font-size:12px;color:#9ca3af;margin-top:2px;">Generat: '+new Date().toLocaleDateString('ro-RO')+'</div>'+
+                '</div>'+
+            '</div>';
+
+        // === TABEL PRODUCTIE ===
+        var ziNume=['LUNI','MARȚI','MIERCURI','JOI','VINERI'];
+        var totBorcane=0;
+        var prodRows='';
+        planDays.forEach(function(day,di){
+            var p1=day.prod1>=0?PLAN_PRODUSE[day.prod1]:null;
+            var p2=day.prod2>=0?PLAN_PRODUSE[day.prod2]:null;
+            var s1=day.sarje1||0, s2=day.sarje2||0;
+            var b1=p1?s1*p1.cantSarje:0, b2=p2?s2*p2.cantSarje:0;
+            var totZi=b1+b2;
+            totBorcane+=totZi;
+            var dateStr=dates[di]?dates[di].toLocaleDateString('ro-RO',{day:'2-digit',month:'2-digit',year:'numeric'}):'';
+            var rowBg=di%2===0?'#f9fafb':'#ffffff';
+
+            if(!p1&&!p2){
+                prodRows+='<tr style="background:'+rowBg+';">'+
+                    '<td style="padding:14px 16px;vertical-align:top;">'+
+                        '<div style="font-size:15px;font-weight:800;color:#1a1a2e;">'+ziNume[di]+'</div>'+
+                        '<div style="font-size:12px;color:#9ca3af;margin-top:2px;">'+dateStr+'</div>'+
+                    '</td>'+
+                    '<td colspan="3" style="padding:14px 16px;color:#9ca3af;font-style:italic;vertical-align:middle;">— neplanificat —</td>'+
+                    '<td style="padding:14px 16px;text-align:right;color:#9ca3af;">—</td>'+
+                '</tr>';
+                return;
+            }
+
+            var p1Cell=p1?
+                '<div style="font-size:14px;font-weight:700;color:#1a1a2e;">'+p1.nume+'</div>'+
+                '<div style="margin-top:4px;"><span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:700;">'+s1+' sarje</span>'+
+                ' <span style="color:#e85d04;font-size:13px;font-weight:700;margin-left:6px;">'+fmtN(b1)+' buc</span></div>':
+                '<span style="color:#d1d5db;">—</span>';
+
+            var p2Cell=p2?
+                '<div style="font-size:14px;font-weight:700;color:#1a1a2e;">'+p2.nume+'</div>'+
+                '<div style="margin-top:4px;"><span style="background:#ede9fe;color:#5b21b6;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:700;">'+s2+' sarje</span>'+
+                ' <span style="color:#e85d04;font-size:13px;font-weight:700;margin-left:6px;">'+fmtN(b2)+' buc</span></div>':
+                '<span style="color:#d1d5db;">—</span>';
+
+            prodRows+='<tr style="background:'+rowBg+';">'+
+                '<td style="padding:14px 16px;vertical-align:top;border-right:2px solid #e4e7ec;min-width:100px;">'+
+                    '<div style="font-size:15px;font-weight:800;color:#1a1a2e;">'+ziNume[di]+'</div>'+
+                    '<div style="font-size:12px;color:#9ca3af;margin-top:2px;">'+dateStr+'</div>'+
+                '</td>'+
+                '<td style="padding:14px 16px;vertical-align:top;">'+p1Cell+'</td>'+
+                '<td style="padding:14px 16px;vertical-align:top;border-left:1px dashed #e4e7ec;">'+p2Cell+'</td>'+
+                '<td style="padding:14px 16px;text-align:right;vertical-align:middle;border-left:2px solid #e4e7ec;">'+
+                    (totZi>0?'<div style="font-size:18px;font-weight:800;color:#22c55e;">'+fmtN(totZi)+'</div><div style="font-size:11px;color:#6b7280;">borcane</div>':'—')+
+                '</td>'+
+            '</tr>';
+        });
+
+        var tabelProductie=
+            '<div style="margin-bottom:32px;">'+
+                '<div style="font-size:14px;font-weight:800;color:#1a1a2e;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding-left:4px;">'+
+                    'Plan Productie Saptamanal'+
+                '</div>'+
+                '<table style="width:100%;border-collapse:collapse;border:1px solid #e4e7ec;border-radius:8px;overflow:hidden;">'+
+                    '<thead><tr style="background:#1a1a2e;">'+
+                        '<th style="padding:10px 16px;text-align:left;color:#fff;font-size:12px;font-weight:700;width:100px;">ZI</th>'+
+                        '<th style="padding:10px 16px;text-align:left;color:#fff;font-size:12px;font-weight:700;">PRODUS PRINCIPAL</th>'+
+                        '<th style="padding:10px 16px;text-align:left;color:#d1d5db;font-size:12px;font-weight:700;">PRODUS SECUNDAR</th>'+
+                        '<th style="padding:10px 16px;text-align:right;color:#fff;font-size:12px;font-weight:700;width:100px;">TOTAL ZI</th>'+
+                    '</tr></thead>'+
+                    '<tbody>'+prodRows+'</tbody>'+
+                    '<tfoot><tr style="background:#f3f4f6;border-top:2px solid #1a1a2e;">'+
+                        '<td colspan="3" style="padding:12px 16px;font-size:14px;font-weight:800;color:#1a1a2e;">TOTAL SAPTAMANA</td>'+
+                        '<td style="padding:12px 16px;text-align:right;font-size:20px;font-weight:800;color:#e85d04;">'+fmtN(totBorcane)+' buc</td>'+
+                    '</tr></tfoot>'+
+                '</table>'+
+            '</div>';
+
+        // === TABEL TRANSPORT / NECESAR MP ===
+        var mpRows='', nrComanda=0;
+        Object.keys(totMP).sort().forEach(function(ingr){
+            var necesar=totMP[ingr];
+            var match=planGetStocMPDenumire(ingr);
+            var stocAct=match?planGetStocMPByDenumire(match.denumire):null;
+            var deOrd=stocAct!==null?Math.max(0,necesar-stocAct):null;
+            if(deOrd!==null&&deOrd>0)nrComanda++;
+            var rowBg=deOrd>0?'#fff7ed':'#ffffff';
+            var stocColor=stocAct===null?'#9ca3af':stocAct>=necesar?'#16a34a':'#dc2626';
+            mpRows+='<tr style="background:'+rowBg+';border-bottom:1px solid #f3f4f6;">'+
+                '<td style="padding:10px 14px;font-size:13px;font-weight:700;color:#1a1a2e;">'+
+                    (deOrd>0?'<span style="color:#dc2626;">▲ </span>':stocAct!==null?'<span style="color:#16a34a;">✓ </span>':'<span style="color:#9ca3af;">? </span>')+ingr+
+                '</td>'+
+                '<td style="padding:10px 12px;text-align:right;font-size:13px;font-weight:800;color:#e85d04;">'+fmtKg(necesar)+'</td>'+
+                '<td style="padding:10px 12px;text-align:right;font-size:13px;font-weight:700;color:'+stocColor+';">'+(stocAct!==null?fmtKg(stocAct):'—')+'</td>'+
+                '<td style="padding:10px 12px;text-align:right;font-size:14px;font-weight:800;color:'+(deOrd>0?'#dc2626':deOrd===0?'#16a34a':'#9ca3af')+';">'+
+                    (deOrd!==null?(deOrd>0?'<strong>'+fmtKg(deOrd)+'</strong>':'OK'):'—')+
+                '</td>'+
+            '</tr>';
+        });
+
+        var tabelTransport=
+            '<div>'+
+                '<div style="font-size:14px;font-weight:800;color:#1a1a2e;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;padding-left:4px;">'+
+                    'Necesar Materie Prima / Comenzi Transport'+(nrComanda>0?' <span style="background:#ef4444;color:#fff;padding:2px 8px;border-radius:12px;font-size:12px;">'+nrComanda+' de comandat</span>':'')+
+                '</div>'+
+                '<table style="width:100%;border-collapse:collapse;border:1px solid #e4e7ec;border-radius:8px;overflow:hidden;">'+
+                    '<thead><tr style="background:#1a1a2e;">'+
+                        '<th style="padding:9px 14px;text-align:left;color:#fff;font-size:12px;font-weight:700;">INGREDIENT</th>'+
+                        '<th style="padding:9px 12px;text-align:right;color:#fff;font-size:12px;font-weight:700;">NECESAR</th>'+
+                        '<th style="padding:9px 12px;text-align:right;color:#d1d5db;font-size:12px;font-weight:700;">STOC ACTUAL</th>'+
+                        '<th style="padding:9px 12px;text-align:right;color:#fff;font-size:12px;font-weight:700;">DE COMANDAT</th>'+
+                    '</tr></thead>'+
+                    '<tbody>'+mpRows+'</tbody>'+
+                '</table>'+
+            '</div>';
+
+        wrap.innerHTML=headerHtml+tabelProductie+tabelTransport;
+        document.body.appendChild(wrap);
+
+        html2canvas(wrap,{scale:2,backgroundColor:'#ffffff',useCORS:true}).then(function(canvas){
+            document.body.removeChild(wrap);
             var link=document.createElement('a');
             link.download='plan_productie_'+(mondayStr||'sapt')+'.jpg';
-            link.href=canvas.toDataURL('image/jpeg',0.92);
+            link.href=canvas.toDataURL('image/jpeg',0.93);
             link.click();
-        }).catch(function(e){alert('Eroare la captura: '+e.message);});
+        }).catch(function(e){
+            if(document.getElementById('planJpegWrap'))document.body.removeChild(wrap);
+            alert('Eroare la captura: '+e.message);
+        });
     }
 
     // === Combinatii cunoscute din foaia "Sarje combinate" ===

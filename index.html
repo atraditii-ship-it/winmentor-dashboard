@@ -345,13 +345,18 @@
         <div id="planificare" class="section">
             <!-- Header controls -->
             <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap;">
-                <span style="font-size:13px;font-weight:500;color:#6b7280;">Săptămâna (luni):</span>
-                <input type="date" id="planLuni" class="tbl-filter" onchange="renderPlanificare()" style="min-width:150px;">
-                <button onclick="planClear()" style="padding:6px 14px;background:#fff;color:#6b7280;border:1px solid #e4e7ec;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Goleste</button>
-                <button onclick="planExport()" style="padding:6px 14px;background:#3b82f6;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Export CSV</button>
-                <button onclick="planPrint()" style="padding:6px 14px;background:#7c3aed;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Raport PDF</button>
-                <button onclick="planSaveJpeg()" style="padding:6px 14px;background:#0f766e;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Salveaza JPEG</button>
-                <span id="planWeekLabel" style="font-size:14px;font-weight:700;color:#1a1a2e;margin-left:4px;"></span>
+                <span style="font-size:13px;font-weight:500;color:#6b7280;">Săptămâna:</span>
+                <input type="date" id="planLuni" class="tbl-filter" onchange="planOnWeekChange()" style="min-width:150px;">
+                <select id="planIstoricSel" onchange="planLoadFromHistory(this.value)" style="font-size:13px;padding:5px 10px;border:1px solid #e4e7ec;border-radius:6px;background:#fff;min-width:220px;">
+                    <option value="">📋 Saptamani salvate...</option>
+                </select>
+                <span id="planWeekLabel" style="font-size:14px;font-weight:700;color:#1a1a2e;"></span>
+                <span id="planSaveStatus" style="font-size:12px;color:#22c55e;display:none;">✓ Salvat automat</span>
+                <div style="margin-left:auto;display:flex;gap:8px;">
+                    <button onclick="planClear()" style="padding:6px 14px;background:#fff;color:#6b7280;border:1px solid #e4e7ec;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Goleste</button>
+                    <button onclick="planPrint()" style="padding:6px 14px;background:#7c3aed;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Raport PDF</button>
+                    <button onclick="planSaveJpeg()" style="padding:6px 14px;background:#0f766e;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">Salveaza JPEG</button>
+                </div>
             </div>
 
             <!-- KPIs -->
@@ -1564,6 +1569,7 @@
         renderAnalizaCanal();
         initPlanificare();
         renderPlanificare();
+        planRefreshIstoricDropdown();
     }
 
     document.addEventListener('DOMContentLoaded',init);
@@ -2274,6 +2280,105 @@
             '<div class="kpi red"><div class="kpi-label">Deficit total</div><div class="kpi-value">'+fmtN(totDeficit)+'</div><div class="kpi-sub">borcane sub stoc tampon</div></div>'+
             '<div class="kpi green"><div class="kpi-label">Planificat saptamana</div><div class="kpi-value">'+fmtN(totPlanBorcane)+'</div><div class="kpi-sub">borcane totale</div></div>';
         renderNecesarMP();
+        planAutoSave();
+    }
+
+    // =========== ISTORIC PLANIFICARE ===========
+
+    function planHistoryKey(mondayStr){ return 'planHist_'+mondayStr; }
+
+    function planLoadAllHistory(){
+        // Merge: localStorage + serverul GitHub (plan_history.js)
+        var all={};
+        // 1. Din localStorage
+        for(var k in localStorage){
+            if(k.indexOf('planHist_')===0){
+                try{all[k.replace('planHist_','')]=JSON.parse(localStorage[k]);}catch(e){}
+            }
+        }
+        // 2. Din fisierul plan_history.js (daca exista pe server)
+        if(typeof PLAN_HISTORY!=='undefined'){
+            for(var w in PLAN_HISTORY){
+                if(!all[w])all[w]=PLAN_HISTORY[w];
+            }
+        }
+        return all;
+    }
+
+    function planAutoSave(){
+        var mondayStr=document.getElementById('planLuni')?document.getElementById('planLuni').value:'';
+        if(!mondayStr)return;
+        var data={days:JSON.parse(JSON.stringify(planDays)),savedAt:new Date().toISOString()};
+        try{localStorage.setItem(planHistoryKey(mondayStr),JSON.stringify(data));}catch(e){}
+        planRefreshIstoricDropdown();
+        var st=document.getElementById('planSaveStatus');
+        if(st){st.style.display='inline';setTimeout(function(){st.style.display='none';},1500);}
+    }
+
+    function planRefreshIstoricDropdown(){
+        var sel=document.getElementById('planIstoricSel');
+        if(!sel)return;
+        var all=planLoadAllHistory();
+        var weeks=Object.keys(all).sort().reverse(); // cele mai recente primele
+        var currentVal=sel.value;
+        sel.innerHTML='<option value="">— saptamani salvate ('+weeks.length+') —</option>';
+        weeks.forEach(function(w){
+            var d=all[w];
+            var dates=planGetWeekDates(w);
+            var label=(dates.length?planFmtDate(dates[0])+' — '+planFmtDate(dates[4]):w);
+            var totalBuc=0;
+            if(d.days)d.days.forEach(function(day){
+                var p1=day.prod1>=0?PLAN_PRODUSE[day.prod1]:null;
+                var p2=day.prod2>=0?PLAN_PRODUSE[day.prod2]:null;
+                totalBuc+=(p1?(day.sarje1||0)*p1.cantSarje:0)+(p2?(day.sarje2||0)*p2.cantSarje:0);
+            });
+            var savedAt=d.savedAt?new Date(d.savedAt).toLocaleDateString('ro-RO'):'';
+            var opt=document.createElement('option');
+            opt.value=w;
+            opt.textContent=label+(totalBuc>0?' · '+fmtN(totalBuc)+' buc':'')+(savedAt?' · '+savedAt:'');
+            if(w===currentVal)opt.selected=true;
+            sel.appendChild(opt);
+        });
+    }
+
+    function planLoadFromHistory(mondayStr){
+        if(!mondayStr)return;
+        var all=planLoadAllHistory();
+        var data=all[mondayStr];
+        if(!data||!data.days){
+            document.getElementById('planIstoricInfo').textContent='Saptamana nu are date salvate.';
+            return;
+        }
+        // Seteaza data
+        var dateEl=document.getElementById('planLuni');
+        if(dateEl)dateEl.value=mondayStr;
+        // Restaureaza planDays
+        planDays=data.days.map(function(d){
+            return {prod1:d.prod1||(-1),sarje1:d.sarje1||0,prod2:d.prod2||(-1),sarje2:d.sarje2||0};
+        });
+        var savedAt=data.savedAt?new Date(data.savedAt).toLocaleString('ro-RO'):'';
+        var info=document.getElementById('planIstoricInfo');
+        if(info)info.textContent='Incarcat: salvat pe '+savedAt;
+        renderPlanificare();
+    }
+
+    function planOnWeekChange(){
+        var mondayStr=document.getElementById('planLuni')?document.getElementById('planLuni').value:'';
+        if(!mondayStr){renderPlanificare();return;}
+        // Verifica daca exista date salvate pentru aceasta saptamana
+        var all=planLoadAllHistory();
+        if(all[mondayStr]){
+            // Incarca automat datele salvate
+            planLoadFromHistory(mondayStr);
+        } else {
+            // Saptamana noua - reseteaza gridul
+            planDays=[{prod1:-1,sarje1:0,prod2:-1,sarje2:0},{prod1:-1,sarje1:0,prod2:-1,sarje2:0},
+                      {prod1:-1,sarje1:0,prod2:-1,sarje2:0},{prod1:-1,sarje1:0,prod2:-1,sarje2:0},
+                      {prod1:-1,sarje1:0,prod2:-1,sarje2:0}];
+            var info=document.getElementById('planIstoricInfo');
+            if(info)info.textContent='';
+            renderPlanificare();
+        }
     }
 
     function planClear(){
@@ -2416,6 +2521,7 @@
         var _cb = Date.now();
         document.write('<scr'+'ipt src="date_winmentor.js?t='+_cb+'"><\/scr'+'ipt>');
         document.write('<scr'+'ipt src="alocare_cheltuieli.js?t='+_cb+'"><\/scr'+'ipt>');
+        document.write('<scr'+'ipt src="plan_history.js?t='+_cb+'" onerror="void(0)"><\/scr'+'ipt>');
     </script>
 </body>
 </html>

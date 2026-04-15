@@ -105,6 +105,7 @@
         <div class="nav-item" onclick="showSection('profitabilitate')">Profitabilitate</div>
         <div class="nav-item" onclick="showSection('pnl')">P&amp;L pe Canale</div>
         <div class="nav-item" onclick="showSection('analizacanal')">Analiza Canal</div>
+        <div class="nav-item" onclick="showSection('planificare')">Planificare Productie</div>
         <div class="nav-item" onclick="showSection('scadentar')">Scadentar</div>
     </div>
 
@@ -339,6 +340,53 @@
         </div>
 
         <!-- SCADENTAR SECTION -->
+        <!-- PLANIFICARE PRODUCTIE SECTION -->
+        <div id="planificare" class="section">
+            <div style="display:flex;align-items:center;gap:16px;margin-bottom:16px;flex-wrap:wrap;">
+                <div>
+                    <span style="font-size:13px;font-weight:500;color:#6b7280;">Săptămâna (luni):</span>
+                    <input type="date" id="planLuni" class="tbl-filter" onchange="renderPlanificare()" style="margin-left:8px;">
+                </div>
+                <button onclick="planAutoSuggest()" style="padding:7px 16px;background:#e85d04;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">⚡ Auto-planificare</button>
+                <button onclick="planClear()" style="padding:7px 16px;background:#fff;color:#6b7280;border:1px solid #e4e7ec;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">✕ Goleste</button>
+                <button onclick="planExport()" style="padding:7px 16px;background:#3b82f6;color:#fff;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;">⬇ Export Excel</button>
+                <span id="planWeekLabel" style="font-size:14px;font-weight:700;color:#1a1a2e;"></span>
+            </div>
+            <!-- KPIs -->
+            <div class="kpi-row" id="planKpis" style="margin-bottom:16px;"></div>
+            <!-- Layout: tabel produse + grid saptamana -->
+            <div style="display:grid;grid-template-columns:1fr;gap:16px;">
+                <!-- Tabel stare produse -->
+                <div class="tbl-box" style="margin-bottom:0;">
+                    <div class="tbl-header"><h3>Stare stocuri & plan săptămânal</h3><span id="planSubtitle" style="font-size:12px;color:#6b7280;"></span></div>
+                    <div style="overflow-x:auto;">
+                    <table id="planTable" style="min-width:1100px;">
+                        <thead>
+                            <tr style="background:#f3f4f6;">
+                                <th style="text-align:left;padding:8px 12px;min-width:220px;">Produs</th>
+                                <th style="text-align:right;padding:8px 10px;">Stoc actual</th>
+                                <th style="text-align:right;padding:8px 10px;">Stoc tampon</th>
+                                <th style="text-align:right;padding:8px 10px;">Deficit</th>
+                                <th style="text-align:right;padding:8px 10px;">Vânz./săpt.</th>
+                                <th style="text-align:right;padding:8px 10px;">Necesar</th>
+                                <th style="text-align:center;padding:8px 10px;background:#fef3c7;">LUNI<br><span id="planD0" style="font-size:11px;font-weight:400;"></span></th>
+                                <th style="text-align:center;padding:8px 10px;background:#fef3c7;">MARȚI<br><span id="planD1" style="font-size:11px;font-weight:400;"></span></th>
+                                <th style="text-align:center;padding:8px 10px;background:#fef3c7;">MIERCURI<br><span id="planD2" style="font-size:11px;font-weight:400;"></span></th>
+                                <th style="text-align:center;padding:8px 10px;background:#fef3c7;">JOI<br><span id="planD3" style="font-size:11px;font-weight:400;"></span></th>
+                                <th style="text-align:center;padding:8px 10px;background:#fef3c7;">VINERI<br><span id="planD4" style="font-size:11px;font-weight:400;"></span></th>
+                                <th style="text-align:right;padding:8px 10px;">Total buc.</th>
+                                <th style="text-align:right;padding:8px 10px;">Cap. max/zi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="planBody"></tbody>
+                        <tfoot id="planFoot"></tfoot>
+                    </table>
+                    </div>
+                </div>
+            </div>
+            <p style="font-size:11px;color:#9ca3af;margin-top:8px;">Introdu nr. de șarje în celulele zilelor. Cap. max = producție la zi plină. Deficit = stoc tampon − stoc actual. Necesar = deficit + vânzări/săptămână.</p>
+        </div>
+
         <div id="scadentar" class="section">
             <div class="kpi-row" id="scadKpis"></div>
             <div class="tbl-box">
@@ -1479,9 +1527,290 @@
         initPnlCanaleSelector();
         initAnalizaCanal();
         renderAnalizaCanal();
+        initPlanificare();
+        renderPlanificare();
     }
 
     document.addEventListener('DOMContentLoaded',init);
+
+    // =========== PLANIFICARE PRODUCTIE ===========
+    var PLAN_PRODUSE = [
+        {nume:'ZACUSCA DE VINETE RAZVAN 350G (BORCAN)',       cantSarje:105, sarjeZi:16, borcanZi:1680, stocTampon:3000},
+        {nume:'ZACUSCA LA CEAUN PICANTA RAZVAN 350G',          cantSarje:75,  sarjeZi:15, borcanZi:1125, stocTampon:2000},
+        {nume:'ZACUSCA LA CEAUN CU GHEBE RAZVAN 350G',         cantSarje:85,  sarjeZi:16, borcanZi:1360, stocTampon:3000},
+        {nume:'SALATA DE ARDEI CAPIA RAZVAN 320G',             cantSarje:80,  sarjeZi:15, borcanZi:1200, stocTampon:1500},
+        {nume:'SALATA DE VINETE RAZVAN 340G',                  cantSarje:95,  sarjeZi:17, borcanZi:1615, stocTampon:2500},
+        {nume:'DULCEATA DE AFINE RAZVAN 380G',                 cantSarje:70,  sarjeZi:15, borcanZi:1050, stocTampon:1000},
+        {nume:'DULCEATA DE CAISE RAZVAN 380G',                 cantSarje:60,  sarjeZi:22, borcanZi:1320, stocTampon:2000},
+        {nume:'DULCEATA DE VISINE RAZVAN 380G',                cantSarje:45,  sarjeZi:20, borcanZi:900,  stocTampon:2000},
+        {nume:'DULCEATA DE VISINE CU MIEZ DE NUCA RAZVAN 380G',cantSarje:50, sarjeZi:30, borcanZi:1500, stocTampon:1000},
+        {nume:'DULCEATA DE CIRESE NEGRE RAZVAN 380G',          cantSarje:55,  sarjeZi:20, borcanZi:1100, stocTampon:2000},
+        {nume:'DULCEATA DE PRUNE CU NUCA 380G',                cantSarje:60,  sarjeZi:20, borcanZi:1200, stocTampon:1000},
+        {nume:'SILVOIZ DE PRUNE LA CEAUN FARA ZAHAR RAZVAN 380G',cantSarje:170,sarjeZi:5, borcanZi:850, stocTampon:2000},
+        {nume:'DULCEATA DE CAPSUNI RAZVAN 380G',               cantSarje:47,  sarjeZi:30, borcanZi:1410, stocTampon:1500},
+        {nume:'ZACUSCA LA CEAUN CU FASOLE RAZVAN 350G',        cantSarje:94,  sarjeZi:16, borcanZi:1504, stocTampon:2000},
+        {nume:'DULCEATA DE MACESE 450GR',                      cantSarje:75,  sarjeZi:14, borcanZi:1050, stocTampon:500},
+        {nume:'DULCEATA DE MURE RAZVAN 380G',                  cantSarje:60,  sarjeZi:18, borcanZi:1080, stocTampon:500}
+    ];
+
+    // planGrid[i][j] = sarje planificate pentru produsul i in ziua j (0=luni..4=vineri)
+    var planGrid = [];
+    PLAN_PRODUSE.forEach(function(){planGrid.push([0,0,0,0,0]);});
+
+    function planGetWeekDates(mondayStr){
+        var d = new Date(mondayStr+'T00:00:00');
+        var dates=[];
+        for(var i=0;i<5;i++){var dd=new Date(d);dd.setDate(d.getDate()+i);dates.push(dd);}
+        return dates;
+    }
+    function planFmtDate(d){return d.toLocaleDateString('ro-RO',{day:'2-digit',month:'2-digit'});}
+
+    function planGetStocActual(numeExcel){
+        var stoc=WINMENTOR_DATA.stoc||[];
+        var nuUp=numeExcel.toUpperCase();
+        var best=null, bestScore=0;
+        stoc.forEach(function(s){
+            var sUp=(s.denumire||'').toUpperCase();
+            if(sUp===nuUp){best=s;bestScore=999;return;}
+            // cuvinte comune
+            var w1=nuUp.split(/\s+/), w2=sUp.split(/\s+/), mc=0;
+            w1.forEach(function(w){if(w.length>2&&w2.indexOf(w)>=0)mc++;});
+            var sc=mc/Math.max(w1.length,1);
+            if(sc>bestScore){bestScore=sc;best=s;}
+        });
+        return (best&&bestScore>0.4)?Math.round(best.cantitate||0):null;
+    }
+
+    function planGetVanzariSapt(numeExcel){
+        var vanzari=WINMENTOR_DATA.vanzari||[];
+        var nuUp=numeExcel.toUpperCase();
+        var totCant=0, totZile=new Set();
+        vanzari.forEach(function(v){
+            var aUp=(v.articol||'').toUpperCase();
+            var tip=(v.tip_doc||'').toString();
+            if(tip!=='19'&&tip!=='22'&&tip!=='26')return;
+            var w1=nuUp.split(/\s+/).filter(function(w){return w.length>3;});
+            var match=w1.filter(function(w){return aUp.indexOf(w)>=0;}).length;
+            if(match>=Math.max(2,w1.length*0.5)){
+                totCant+=v.cantitate||0;
+                if(v.data)totZile.add(v.data.substring(0,7)); // luna
+            }
+        });
+        var luni=totZile.size||1;
+        return Math.round(totCant/luni/4.33); // medie saptamanala
+    }
+
+    function initPlanificare(){
+        // set monday of current week
+        var now=new Date();
+        var day=now.getDay()||7; // 1=luni..7=duminica
+        var monday=new Date(now);
+        monday.setDate(now.getDate()-(day-1));
+        // next monday if already Thu/Fri
+        if(day>=4){monday.setDate(monday.getDate()+7);}
+        var sel=document.getElementById('planLuni');
+        if(sel) sel.value=monday.toISOString().split('T')[0];
+    }
+
+    function renderPlanificare(){
+        var mondayStr=document.getElementById('planLuni')?document.getElementById('planLuni').value:'';
+        var dates=mondayStr?planGetWeekDates(mondayStr):[];
+        var ziNume=['LUNI','MARȚI','MIERCURI','JOI','VINERI'];
+
+        // Update date labels in header
+        for(var di=0;di<5;di++){
+            var el=document.getElementById('planD'+di);
+            if(el&&dates[di])el.textContent=planFmtDate(dates[di]);
+        }
+        if(mondayStr){
+            var endDate=dates[4]?planFmtDate(dates[4]):'';
+            var lbl=document.getElementById('planWeekLabel');
+            if(lbl)lbl.textContent=planFmtDate(dates[0])+' — '+endDate;
+        }
+
+        var tbody=document.getElementById('planBody');
+        if(!tbody)return;
+        tbody.innerHTML='';
+
+        var totDeficit=0, prodSubTampon=0, totPlanBorcane=0;
+
+        PLAN_PRODUSE.forEach(function(p,idx){
+            var stocActual=planGetStocActual(p.nume);
+            var stocAct=stocActual!==null?stocActual:0;
+            var deficit=Math.max(0,p.stocTampon-stocAct);
+            var vanzSapt=planGetVanzariSapt(p.nume);
+            var necesar=deficit+vanzSapt;
+            if(deficit>0)prodSubTampon++;
+            totDeficit+=deficit;
+
+            // Calculate week total for this product
+            var totalSaptBorcane=0;
+            for(var di=0;di<5;di++){totalSaptBorcane+=(planGrid[idx][di]||0)*p.cantSarje;}
+            totPlanBorcane+=totalSaptBorcane;
+
+            var tr=document.createElement('tr');
+            tr.style.cssText='border-bottom:1px solid #f3f4f6;'+(deficit>0?'background:#fff7ed;':'');
+
+            // Produs
+            var tdP=document.createElement('td');
+            tdP.style.cssText='padding:7px 12px;font-size:12px;font-weight:500;';
+            tdP.textContent=p.nume;
+            tr.appendChild(tdP);
+
+            // Stoc actual
+            var tdSA=document.createElement('td');
+            tdSA.style.cssText='text-align:right;padding:7px 10px;font-size:12px;'+(stocActual===null?'color:#9ca3af;':'');
+            tdSA.textContent=stocActual!==null?fmtN(stocAct):'—';
+            tr.appendChild(tdSA);
+
+            // Stoc tampon
+            var tdST=document.createElement('td');
+            tdST.style.cssText='text-align:right;padding:7px 10px;font-size:12px;color:#6b7280;';
+            tdST.textContent=fmtN(p.stocTampon);
+            tr.appendChild(tdST);
+
+            // Deficit
+            var tdDef=document.createElement('td');
+            tdDef.style.cssText='text-align:right;padding:7px 10px;font-size:12px;font-weight:700;color:'+(deficit>0?'#ef4444':'#22c55e')+';';
+            tdDef.textContent=deficit>0?fmtN(deficit):'OK';
+            tr.appendChild(tdDef);
+
+            // Vanzari/sapt
+            var tdVz=document.createElement('td');
+            tdVz.style.cssText='text-align:right;padding:7px 10px;font-size:12px;color:#3b82f6;';
+            tdVz.textContent=fmtN(vanzSapt);
+            tr.appendChild(tdVz);
+
+            // Necesar
+            var tdNec=document.createElement('td');
+            tdNec.style.cssText='text-align:right;padding:7px 10px;font-size:12px;font-weight:700;color:#e85d04;';
+            tdNec.textContent=fmtN(necesar);
+            tr.appendChild(tdNec);
+
+            // Zile input (0=luni..4=vineri)
+            for(var di=0;di<5;di++){
+                (function(dayIdx,prodIdx,prod){
+                    var tdDay=document.createElement('td');
+                    tdDay.style.cssText='text-align:center;padding:4px 6px;background:#fefce8;';
+                    var val=planGrid[prodIdx][dayIdx]||0;
+                    var sarjeMax=prod.sarjeZi;
+                    var borcane=val*prod.cantSarje;
+                    var pct=sarjeMax>0?Math.min(100,val/sarjeMax*100):0;
+                    var barCol=pct>=90?'#22c55e':pct>=50?'#f59e0b':'#e5e7eb';
+                    tdDay.innerHTML=
+                        '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;">'+
+                        '<input type="number" min="0" max="'+sarjeMax+'" value="'+(val||'')+'" '+
+                        'style="width:52px;text-align:center;border:1px solid #e4e7ec;border-radius:4px;padding:3px;font-size:12px;font-weight:700;" '+
+                        'placeholder="șarje" '+
+                        'onchange="planSetVal('+prodIdx+','+dayIdx+',this.value);renderPlanificare();" '+
+                        'oninput="planSetVal('+prodIdx+','+dayIdx+',this.value);renderPlanificare();">'+
+                        (val>0?'<div style="font-size:10px;color:#6b7280;">'+fmtN(borcane)+' buc</div>'+
+                        '<div style="width:48px;height:3px;background:#e5e7eb;border-radius:2px;"><div style="width:'+pct+'%;height:3px;background:'+barCol+';border-radius:2px;"></div></div>':'<div style="font-size:10px;color:#d1d5db;">max '+sarjeMax+'</div>')+
+                        '</div>';
+                    tr.appendChild(tdDay);
+                })(di, idx, p);
+            }
+
+            // Total saptamana
+            var tdTot=document.createElement('td');
+            tdTot.style.cssText='text-align:right;padding:7px 10px;font-size:12px;font-weight:700;color:'+(totalSaptBorcane>=necesar?'#22c55e':totalSaptBorcane>0?'#f59e0b':'#6b7280')+';';
+            tdTot.textContent=totalSaptBorcane>0?fmtN(totalSaptBorcane):'—';
+            tr.appendChild(tdTot);
+
+            // Cap max/zi
+            var tdCap=document.createElement('td');
+            tdCap.style.cssText='text-align:right;padding:7px 10px;font-size:11px;color:#9ca3af;';
+            tdCap.textContent=fmtN(p.borcanZi)+' ('+p.sarjeZi+' șarje)';
+            tr.appendChild(tdCap);
+
+            tbody.appendChild(tr);
+        });
+
+        // Footer totals
+        var tfoot=document.getElementById('planFoot');
+        if(tfoot){
+            tfoot.innerHTML='<tr style="background:#f3f4f6;font-weight:700;border-top:2px solid #d1d5db;">'+
+                '<td style="padding:8px 12px;font-size:12px;">TOTAL SAPTAMANA</td>'+
+                '<td colspan="4"></td>'+
+                '<td style="text-align:right;padding:8px 10px;font-size:12px;color:#e85d04;">'+fmtN(totDeficit)+' buc</td>'+
+                '<td colspan="5" style="text-align:center;font-size:12px;color:#6b7280;">— introdu șarjele în celule —</td>'+
+                '<td style="text-align:right;padding:8px 10px;font-size:12px;color:#22c55e;font-weight:700;">'+fmtN(totPlanBorcane)+' buc</td>'+
+                '<td></td></tr>';
+        }
+
+        // KPIs
+        var kEl=document.getElementById('planKpis');
+        if(kEl)kEl.innerHTML=
+            '<div class="kpi accent"><div class="kpi-label">Produse sub tampon</div><div class="kpi-value" style="color:#ef4444;">'+prodSubTampon+'</div><div class="kpi-sub">din '+PLAN_PRODUSE.length+' produse</div></div>'+
+            '<div class="kpi red"><div class="kpi-label">Deficit total</div><div class="kpi-value">'+fmtN(totDeficit)+'</div><div class="kpi-sub">borcane sub stoc tampon</div></div>'+
+            '<div class="kpi green"><div class="kpi-label">Planificat săptămâna</div><div class="kpi-value">'+fmtN(totPlanBorcane)+'</div><div class="kpi-sub">borcane totale</div></div>'+
+            '<div class="kpi blue"><div class="kpi-label">Acoperire deficit</div><div class="kpi-value">'+(totDeficit>0?Math.min(100,Math.round(totPlanBorcane/totDeficit*100))+'%':'100%')+'</div><div class="kpi-sub">din deficitul total</div></div>';
+    }
+
+    function planSetVal(prodIdx,dayIdx,val){
+        var n=parseInt(val)||0;
+        var max=PLAN_PRODUSE[prodIdx].sarjeZi;
+        planGrid[prodIdx][dayIdx]=Math.max(0,Math.min(n,max));
+    }
+
+    function planAutoSuggest(){
+        // Reset grid
+        PLAN_PRODUSE.forEach(function(_,i){planGrid[i]=[0,0,0,0,0];});
+
+        // Sort products by priority: deficit first, then vanzari
+        var sorted=PLAN_PRODUSE.map(function(p,i){
+            var stocAct=planGetStocActual(p.nume)||0;
+            var deficit=Math.max(0,p.stocTampon-stocAct);
+            var vanzSapt=planGetVanzariSapt(p.nume);
+            return {idx:i,p:p,deficit:deficit,vanzSapt:vanzSapt,necesar:deficit+vanzSapt};
+        }).filter(function(x){return x.necesar>0;})
+          .sort(function(a,b){return b.deficit-a.deficit;});
+
+        // Assign: each day has capacity of 1 full production run
+        // Try to fit 1 product per day (can split to 0.5 + 0.5 if needed)
+        var dayLoad=[0,0,0,0,0]; // sarje used per day (max = sarjeZi of assigned product)
+        sorted.forEach(function(item){
+            var sarjeNeeded=Math.ceil(item.necesar/item.p.cantSarje);
+            var sarjeMax=item.p.sarjeZi;
+            var remaining=sarjeNeeded;
+            for(var di=0;di<5&&remaining>0;di++){
+                if(dayLoad[di]===0){
+                    var allocate=Math.min(remaining,sarjeMax);
+                    planGrid[item.idx][di]=allocate;
+                    dayLoad[di]=allocate;
+                    remaining-=allocate;
+                }
+            }
+        });
+        renderPlanificare();
+    }
+
+    function planClear(){
+        PLAN_PRODUSE.forEach(function(_,i){planGrid[i]=[0,0,0,0,0];});
+        renderPlanificare();
+    }
+
+    function planExport(){
+        var mondayStr=document.getElementById('planLuni')?document.getElementById('planLuni').value:'';
+        var dates=mondayStr?planGetWeekDates(mondayStr):[];
+        var ziNume=['LUNI','MARTI','MIERCURI','JOI','VINERI'];
+        var rows=[['Produs','Stoc actual','Stoc tampon','Deficit','Vanz/sapt','Necesar'].concat(ziNume.map(function(z,i){return z+(dates[i]?' '+planFmtDate(dates[i]):'');})).concat(['Total buc.'])];
+        PLAN_PRODUSE.forEach(function(p,idx){
+            var stocAct=planGetStocActual(p.nume)||0;
+            var deficit=Math.max(0,p.stocTampon-stocAct);
+            var vanzSapt=planGetVanzariSapt(p.nume);
+            var necesar=deficit+vanzSapt;
+            var totalBuc=0;
+            var row=[p.nume,stocAct,p.stocTampon,deficit,vanzSapt,necesar];
+            for(var di=0;di<5;di++){var s=planGrid[idx][di]||0;row.push(s>0?s+'s/'+fmtN(s*p.cantSarje)+'buc':'—');totalBuc+=s*p.cantSarje;}
+            row.push(totalBuc);
+            rows.push(row);
+        });
+        var csv=rows.map(function(r){return r.map(function(c){return '"'+String(c).replace(/"/g,'""')+'"';}).join(',');}).join('\n');
+        var blob=new Blob(['\ufeff'+csv],{type:'text/csv;charset=utf-8;'});
+        var a=document.createElement('a');a.href=URL.createObjectURL(blob);
+        a.download='planificare_productie_'+(mondayStr||'sapt')+'.csv';a.click();
+    }
     </script>
 
     <script>

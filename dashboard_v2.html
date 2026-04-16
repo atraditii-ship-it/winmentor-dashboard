@@ -159,6 +159,14 @@
                     <canvas id="chartMonetarBonuri"></canvas>
                 </div>
             </div>
+            <!-- Taburi: Produse vandute / Bonuri individuale -->
+            <div style="display:flex;gap:0;border-bottom:2px solid #e4e7ec;margin-bottom:16px;">
+                <button id="mTabProduse" onclick="setMTab('produse')" style="padding:8px 20px;font-size:13px;font-weight:600;border:none;border-bottom:2px solid #e85d04;margin-bottom:-2px;cursor:pointer;font-family:'Inter',sans-serif;background:transparent;color:#e85d04;">Produse Vandute</button>
+                <button id="mTabBonuri" onclick="setMTab('bonuri')" style="padding:8px 20px;font-size:13px;font-weight:600;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;cursor:pointer;font-family:'Inter',sans-serif;background:transparent;color:#888;">Bonuri Individuale</button>
+            </div>
+
+            <!-- TAB: Produse vandute -->
+            <div id="mPanelProduse">
             <div class="tbl-box">
                 <div class="tbl-header">
                     <h3 id="mTableTitle">Produse Vandute la Magazin</h3>
@@ -176,6 +184,39 @@
                     <tfoot><tr><td id="mFoot"></td></tr></tfoot>
                 </table>
                 <div class="pag" id="mPag"></div>
+            </div>
+            </div>
+
+            <!-- TAB: Bonuri individuale CM -->
+            <div id="mPanelBonuri" style="display:none;">
+            <div class="tbl-box">
+                <div class="tbl-header">
+                    <h3>Bonuri Casa de Marcat</h3>
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                        <input type="date" id="bonuriDataDe" class="tbl-filter" onchange="renderBonuriTable()" style="font-size:12px;padding:5px 8px;" title="De la data">
+                        <input type="date" id="bonuriDataPana" class="tbl-filter" onchange="renderBonuriTable()" style="font-size:12px;padding:5px 8px;" title="Pana la data">
+                        <input type="text" id="bonuriSearch" class="tbl-search" placeholder="Cauta nr bon / operator..." oninput="renderBonuriTable()">
+                        <button onclick="bonuriResetFiltre()" style="padding:5px 10px;font-size:12px;border:1px solid #e4e7ec;border-radius:6px;cursor:pointer;background:#fff;color:#374151;">Reset</button>
+                    </div>
+                </div>
+                <div id="bonuriKpis" style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;"></div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th onclick="sortBonuri(0)" style="cursor:pointer;">Data ▲</th>
+                            <th onclick="sortBonuri(1)" style="cursor:pointer;">Nr Bon</th>
+                            <th class="text-right" onclick="sortBonuri(2)" style="cursor:pointer;">Valoare</th>
+                            <th class="text-right" onclick="sortBonuri(3)" style="cursor:pointer;">Discount</th>
+                            <th class="text-right" onclick="sortBonuri(4)" style="cursor:pointer;">Net</th>
+                            <th>Operator</th>
+                            <th>Casa de marcat</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bonuriBody"></tbody>
+                    <tfoot><tr><td colspan="7" id="bonuriFoot" style="padding:8px 12px;font-size:12px;color:#888;"></td></tr></tfoot>
+                </table>
+                <div class="pag" id="bonuriPag"></div>
+            </div>
             </div>
         </div>
 
@@ -737,6 +778,113 @@
             foot.innerHTML='<strong>'+f.length+' linii | Valoare: '+fmt(sv)+' | TVA: '+fmt(st)+'</strong>';
             renderPag('mPag',tp,mPage,function(p){mPage=p;renderMonetarTable();});
         }
+    }
+
+    // =========== BONURI CM ===========
+    var bonuriSort={col:0,asc:false}, bonuriPage=0, bonuriPS=50;
+
+    function setMTab(tab) {
+        var isProduse = (tab === 'produse');
+        document.getElementById('mPanelProduse').style.display = isProduse ? '' : 'none';
+        document.getElementById('mPanelBonuri').style.display = isProduse ? 'none' : '';
+        document.getElementById('mTabProduse').style.borderBottomColor = isProduse ? '#e85d04' : 'transparent';
+        document.getElementById('mTabProduse').style.color = isProduse ? '#e85d04' : '#888';
+        document.getElementById('mTabBonuri').style.borderBottomColor = isProduse ? 'transparent' : '#e85d04';
+        document.getElementById('mTabBonuri').style.color = isProduse ? '#888' : '#e85d04';
+        if (!isProduse) { initBonuriFiltre(); renderBonuriTable(); }
+    }
+
+    function initBonuriFiltre() {
+        var bonuri = WINMENTOR_DATA.bonuri_cm || [];
+        if (!bonuri.length) return;
+        // Seteaza data minima si maxima
+        var dates = bonuri.map(function(b){ return b.data; }).filter(Boolean).sort();
+        var dDe = document.getElementById('bonuriDataDe');
+        var dPana = document.getElementById('bonuriDataPana');
+        if (!dDe.value && dates.length) dDe.value = dates[0];
+        if (!dPana.value && dates.length) dPana.value = dates[dates.length-1];
+    }
+
+    function bonuriResetFiltre() {
+        document.getElementById('bonuriDataDe').value = '';
+        document.getElementById('bonuriDataPana').value = '';
+        document.getElementById('bonuriSearch').value = '';
+        initBonuriFiltre();
+        bonuriPage = 0;
+        renderBonuriTable();
+    }
+
+    function sortBonuri(c) {
+        if (bonuriSort.col===c) bonuriSort.asc=!bonuriSort.asc;
+        else { bonuriSort.col=c; bonuriSort.asc=true; }
+        bonuriPage=0; renderBonuriTable();
+    }
+
+    function renderBonuriTable() {
+        var bonuri = (WINMENTOR_DATA.bonuri_cm || []).slice();
+        var dDe   = document.getElementById('bonuriDataDe').value;
+        var dPana = document.getElementById('bonuriDataPana').value;
+        var q     = (document.getElementById('bonuriSearch').value || '').toLowerCase();
+
+        // Filtrare
+        if (dDe)   bonuri = bonuri.filter(function(b){ return b.data >= dDe; });
+        if (dPana) bonuri = bonuri.filter(function(b){ return b.data <= dPana; });
+        if (q)     bonuri = bonuri.filter(function(b){
+            return (b.nrBon||'').toLowerCase().indexOf(q)!==-1
+                || (b.operator||'').toLowerCase().indexOf(q)!==-1
+                || (b.casaMarcat||'').toLowerCase().indexOf(q)!==-1;
+        });
+
+        // Sortare
+        var cols = ['data','nrBon','valoare','discount','net','operator','casaMarcat'];
+        var numCols = {valoare:1, discount:1, net:1};
+        bonuri.sort(function(a,b){
+            var sc = cols[bonuriSort.col] || 'data';
+            var va = sc==='net' ? (a.valoare - a.discount) : a[sc];
+            var vb = sc==='net' ? (b.valoare - b.discount) : b[sc];
+            if (numCols[sc]) { va=parseFloat(va)||0; vb=parseFloat(vb)||0; return bonuriSort.asc ? va-vb : vb-va; }
+            va=String(va||''); vb=String(vb||'');
+            return bonuriSort.asc ? va.localeCompare(vb,'ro') : vb.localeCompare(va,'ro');
+        });
+
+        // KPIs
+        var totVal=0, totDisc=0, nrBon=bonuri.length;
+        bonuri.forEach(function(b){ totVal+=b.valoare||0; totDisc+=b.discount||0; });
+        var kh='';
+        kh+='<div class="kpi accent"><div class="kpi-label">Total Valoare</div><div class="kpi-value">'+fmt(totVal)+'</div></div>';
+        kh+='<div class="kpi green"><div class="kpi-label">Total Discount</div><div class="kpi-value">'+fmt(totDisc)+'</div></div>';
+        kh+='<div class="kpi blue"><div class="kpi-label">Net (Valoare-Disc)</div><div class="kpi-value">'+fmt(totVal-totDisc)+'</div></div>';
+        kh+='<div class="kpi"><div class="kpi-label">Nr. Bonuri</div><div class="kpi-value">'+nrBon+'</div></div>';
+        kh+='<div class="kpi"><div class="kpi-label">Medie / Bon</div><div class="kpi-value">'+fmt(nrBon>0?(totVal-totDisc)/nrBon:0)+'</div></div>';
+        document.getElementById('bonuriKpis').innerHTML = kh;
+
+        // Paginare
+        var tp=Math.ceil(bonuri.length/bonuriPS)||1;
+        if(bonuriPage>=tp) bonuriPage=tp-1;
+        var page=bonuri.slice(bonuriPage*bonuriPS,(bonuriPage+1)*bonuriPS);
+
+        var h='';
+        page.forEach(function(b){
+            var net=b.valoare-(b.discount||0);
+            var discCell = b.discount>0 ? '<span style="color:#e85d04">-'+fmt(b.discount)+'</span>' : '<span style="color:#9ca3af">-</span>';
+            h+='<tr>';
+            h+='<td>'+b.data+'</td>';
+            h+='<td style="font-weight:600;">'+b.nrBon+'</td>';
+            h+='<td class="text-right">'+fmt(b.valoare)+'</td>';
+            h+='<td class="text-right">'+discCell+'</td>';
+            h+='<td class="text-right" style="font-weight:600;color:#22c55e;">'+fmt(net)+'</td>';
+            h+='<td>'+((b.operator||'').trim()||'-')+'</td>';
+            h+='<td style="color:#888;font-size:11px;">'+b.casaMarcat+'</td>';
+            h+='</tr>';
+        });
+        if (!h) h='<tr><td colspan="7" style="text-align:center;color:#888;padding:20px;">'+
+            (WINMENTOR_DATA.bonuri_cm && WINMENTOR_DATA.bonuri_cm.length ? 'Niciun bon gasit pentru filtrele selectate.' : 'Datele BONCM nu au fost extrase inca. Ruleaza actualizeaza_si_publica.bat.')+
+            '</td></tr>';
+        document.getElementById('bonuriBody').innerHTML = h;
+
+        var foot=document.getElementById('bonuriFoot');
+        foot.innerHTML='<strong>'+bonuri.length+' bonuri | Valoare: '+fmt(totVal)+' | Net: '+fmt(totVal-totDisc)+'</strong>';
+        renderPag('bonuriPag', tp, bonuriPage, function(p){bonuriPage=p; renderBonuriTable();});
     }
 
     // =========== STOCURI ===========
@@ -1544,7 +1692,7 @@
 
     // =========== INIT ===========
     function init(){
-        if(typeof WINMENTOR_DATA==='undefined')window.WINMENTOR_DATA={meta:{},sumar:{},stoc:[],vanzari:[],scadentar_clienti:[],balanta_lunara:[],monetar_zile:[],monetar_linii:[]};
+        if(typeof WINMENTOR_DATA==='undefined')window.WINMENTOR_DATA={meta:{},sumar:{},stoc:[],vanzari:[],scadentar_clienti:[],balanta_lunara:[],monetar_zile:[],monetar_linii:[],bonuri_cm:[],consumuri:{}};
         if(typeof ALOCARE_DATA==='undefined')window.ALOCARE_DATA={};
         var m=WINMENTOR_DATA.meta||{};
         document.getElementById('tbPeriod').textContent=(luniNume[m.luna]||'')+' '+(m.an||2026);

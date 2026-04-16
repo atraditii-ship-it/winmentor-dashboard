@@ -710,18 +710,21 @@
         kh+='<div class="kpi"><div class="kpi-label">Medie / Zi</div><div class="kpi-value">'+fmt(zileLuc>0?totalVal/zileLuc:0)+'</div><div class="kpi-sub">'+zileLuc+' zile</div></div>';
         document.getElementById('monetarKpis').innerHTML=kh;
 
-        // Charts
+        // Charts - destroy first to avoid "Canvas already in use" error
+        if(chartMZ){try{chartMZ.destroy();}catch(e){} chartMZ=null;}
+        if(chartMB){try{chartMB.destroy();}catch(e){} chartMB=null;}
         var labels=[],vals=[],cashArr=[],cardArr=[],bons=[];
         zile.forEach(function(z){labels.push('Zi '+z.zi);vals.push(z.valoare);cashArr.push(z.cash||0);cardArr.push(z.card||0);bons.push(z.nrBonuri);});
-        chartMZ=new Chart(document.getElementById('chartMonetarZile'),{type:'bar',data:{labels:labels,datasets:[{label:'Valoare',data:vals,backgroundColor:'#e85d04',borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{callback:function(v){return fmtN(v)}}}}}});
-        // Chart cash vs card (stacked)
-        var hasCashCard = cashArr.some(function(v){return v>0;}) || cardArr.some(function(v){return v>0;});
-        if(hasCashCard){
-            document.getElementById('titleMonetarBonuri').textContent='Cash vs Card pe Zile';
-            chartMB=new Chart(document.getElementById('chartMonetarBonuri'),{type:'bar',data:{labels:labels,datasets:[{label:'Numerar',data:cashArr,backgroundColor:'#22c55e',borderRadius:4,stack:'s'},{label:'Card',data:cardArr,backgroundColor:'#3b82f6',borderRadius:4,stack:'s'}]},options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,stacked:true,ticks:{callback:function(v){return fmtN(v)}}},x:{stacked:true}}}});
-        } else {
-            chartMB=new Chart(document.getElementById('chartMonetarBonuri'),{type:'bar',data:{labels:labels,datasets:[{label:'Bonuri',data:bons,backgroundColor:'#3b82f6',borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
-        }
+        try { chartMZ=new Chart(document.getElementById('chartMonetarZile'),{type:'bar',data:{labels:labels,datasets:[{label:'Valoare',data:vals,backgroundColor:'#e85d04',borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}}); } catch(e){}
+        try {
+            var hasCashCard = cashArr.some(function(v){return v>0;}) || cardArr.some(function(v){return v>0;});
+            if(hasCashCard){
+                document.getElementById('titleMonetarBonuri').textContent='Cash vs Card pe Zile';
+                chartMB=new Chart(document.getElementById('chartMonetarBonuri'),{type:'bar',data:{labels:labels,datasets:[{label:'Numerar',data:cashArr,backgroundColor:'#22c55e',borderRadius:4,stack:'s'},{label:'Card',data:cardArr,backgroundColor:'#3b82f6',borderRadius:4,stack:'s'}]},options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,stacked:true},x:{stacked:true}}}});
+            } else {
+                chartMB=new Chart(document.getElementById('chartMonetarBonuri'),{type:'bar',data:{labels:labels,datasets:[{label:'Bonuri',data:bons,backgroundColor:'#3b82f6',borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+            }
+        } catch(e){}
 
         renderMonetarTable();
     }

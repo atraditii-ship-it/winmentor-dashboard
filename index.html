@@ -159,14 +159,6 @@
                     <canvas id="chartMonetarBonuri"></canvas>
                 </div>
             </div>
-            <!-- Taburi: Produse vandute / Bonuri individuale -->
-            <div style="display:flex;gap:0;border-bottom:2px solid #e4e7ec;margin-bottom:16px;">
-                <button id="mTabProduse" onclick="setMTab('produse')" style="padding:8px 20px;font-size:13px;font-weight:600;border:none;border-bottom:2px solid #e85d04;margin-bottom:-2px;cursor:pointer;font-family:'Inter',sans-serif;background:transparent;color:#e85d04;">Produse Vandute</button>
-                <button id="mTabBonuri" onclick="setMTab('bonuri')" style="padding:8px 20px;font-size:13px;font-weight:600;border:none;border-bottom:2px solid transparent;margin-bottom:-2px;cursor:pointer;font-family:'Inter',sans-serif;background:transparent;color:#888;">Bonuri Individuale</button>
-            </div>
-
-            <!-- TAB: Produse vandute -->
-            <div id="mPanelProduse">
             <div class="tbl-box">
                 <div class="tbl-header">
                     <h3 id="mTableTitle">Produse Vandute la Magazin</h3>
@@ -184,39 +176,6 @@
                     <tfoot><tr><td id="mFoot"></td></tr></tfoot>
                 </table>
                 <div class="pag" id="mPag"></div>
-            </div>
-            </div>
-
-            <!-- TAB: Bonuri individuale CM -->
-            <div id="mPanelBonuri" style="display:none;">
-            <div class="tbl-box">
-                <div class="tbl-header">
-                    <h3>Bonuri Casa de Marcat</h3>
-                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-                        <input type="date" id="bonuriDataDe" class="tbl-filter" onchange="renderBonuriTable()" style="font-size:12px;padding:5px 8px;" title="De la data">
-                        <input type="date" id="bonuriDataPana" class="tbl-filter" onchange="renderBonuriTable()" style="font-size:12px;padding:5px 8px;" title="Pana la data">
-                        <input type="text" id="bonuriSearch" class="tbl-search" placeholder="Cauta nr bon / operator..." oninput="renderBonuriTable()">
-                        <button onclick="bonuriResetFiltre()" style="padding:5px 10px;font-size:12px;border:1px solid #e4e7ec;border-radius:6px;cursor:pointer;background:#fff;color:#374151;">Reset</button>
-                    </div>
-                </div>
-                <div id="bonuriKpis" style="display:flex;gap:12px;margin-bottom:12px;flex-wrap:wrap;"></div>
-                <table>
-                    <thead>
-                        <tr>
-                            <th onclick="sortBonuri(0)" style="cursor:pointer;">Data ▲</th>
-                            <th onclick="sortBonuri(1)" style="cursor:pointer;">Nr Bon</th>
-                            <th class="text-right" onclick="sortBonuri(2)" style="cursor:pointer;">Valoare</th>
-                            <th class="text-right" onclick="sortBonuri(3)" style="cursor:pointer;">Discount</th>
-                            <th class="text-right" onclick="sortBonuri(4)" style="cursor:pointer;">Net</th>
-                            <th>Operator</th>
-                            <th>Casa de marcat</th>
-                        </tr>
-                    </thead>
-                    <tbody id="bonuriBody"></tbody>
-                    <tfoot><tr><td colspan="7" id="bonuriFoot" style="padding:8px 12px;font-size:12px;color:#888;"></td></tr></tfoot>
-                </table>
-                <div class="pag" id="bonuriPag"></div>
-            </div>
             </div>
         </div>
 
@@ -563,6 +522,22 @@
             if (isAll || z.luna === selLuna) { totalMonetar += z.valoare; totalBonuri += z.nrBonuri; }
         });
 
+        // Vanzari Azi (din monetar_zile - ziua de azi din luna curenta)
+        var aziDate = new Date();
+        var aziZi = aziDate.getDate();
+        var aziLuna = aziDate.getMonth() + 1;
+        var vanzariAzi = 0, bonuriAzi = 0;
+        (D.monetar_zile || []).forEach(function(z) {
+            if (z.luna === aziLuna && z.zi === aziZi) { vanzariAzi += z.valoare || 0; bonuriAzi += z.nrBonuri || 0; }
+        });
+        // Fallback din bonuri_cm daca exista date mai detaliate
+        if (vanzariAzi === 0 && (D.bonuri_cm || []).length > 0) {
+            var aziStr = aziDate.getFullYear() + '-' + String(aziLuna).padStart(2,'0') + '-' + String(aziZi).padStart(2,'0');
+            (D.bonuri_cm || []).forEach(function(b) {
+                if (b.data === aziStr) { vanzariAzi += b.valoare || 0; bonuriAzi++; }
+            });
+        }
+
         // Stoc (snapshot curent, nu depinde de luna)
         var stocPF = 0, stocMP = 0, stocAmb = 0;
         (D.stoc || []).forEach(function(s) {
@@ -583,6 +558,21 @@
 
         // KPIs
         var kh = '';
+        // Vanzari Azi - mereu primul
+        var aziLabel = String(aziZi).padStart(2,'0') + '.' + String(aziLuna).padStart(2,'0') + '.' + aziDate.getFullYear();
+        if (vanzariAzi > 0) {
+            kh += '<div class="kpi" style="border-left:4px solid #22c55e;background:linear-gradient(135deg,#f0fdf4,#fff);">';
+            kh += '<div class="kpi-label" style="color:#16a34a;font-weight:700;">&#128994; Vanzari Azi ('+aziLabel+')</div>';
+            kh += '<div class="kpi-value" style="color:#16a34a;">'+fmt(vanzariAzi)+'</div>';
+            kh += '<div class="kpi-sub">'+(bonuriAzi>0?bonuriAzi+' bonuri':'magazin')+'</div>';
+            kh += '</div>';
+        } else {
+            kh += '<div class="kpi" style="border-left:4px solid #d1d5db;background:#fafafa;">';
+            kh += '<div class="kpi-label" style="color:#9ca3af;">&#128308; Vanzari Azi ('+aziLabel+')</div>';
+            kh += '<div class="kpi-value" style="color:#9ca3af;font-size:20px;">-</div>';
+            kh += '<div class="kpi-sub" style="color:#9ca3af;">fara date inca</div>';
+            kh += '</div>';
+        }
         kh += '<div class="kpi accent"><div class="kpi-label">Cifra de Afaceri (' + caLabel + ')</div><div class="kpi-value">' + fmt(caVal) + '</div>';
         if (!isAll && caPrevVal > 0) kh += '<div class="kpi-sub">' + (caChange > 0 ? '+' : '') + caChange + '% vs luna ant.</div>';
         kh += '</div>';
@@ -708,22 +698,33 @@
         var lunaM=getMonetarLuna();
         var zile=(D.monetar_zile||[]).filter(function(z){return !lunaM||z.luna===lunaM;});
         var linii=(D.monetar_linii||[]).filter(function(l){return !lunaM||l.luna===lunaM;});
-        var totalVal=0,totalDisc=0,totalBon=0,zileLuc=zile.length;
-        zile.forEach(function(z){totalVal+=z.valoare;totalDisc+=z.discount;totalBon+=z.nrBonuri;});
+        var totalVal=0,totalDisc=0,totalBon=0,zileLuc=zile.length,totalCash=0,totalCard=0,totalVoucher=0;
+        zile.forEach(function(z){totalVal+=z.valoare;totalDisc+=z.discount;totalBon+=z.nrBonuri;totalCash+=(z.cash||0);totalCard+=(z.card||0);totalVoucher+=(z.voucher||0);});
 
         var kh='';
-        kh+='<div class="kpi accent"><div class="kpi-label">Total Monetar</div><div class="kpi-value">'+fmt(totalVal)+'</div></div>';
-        kh+='<div class="kpi green"><div class="kpi-label">Total Discount</div><div class="kpi-value">'+fmt(totalDisc)+'</div></div>';
-        kh+='<div class="kpi blue"><div class="kpi-label">Nr. Bonuri</div><div class="kpi-value">'+totalBon+'</div></div>';
-        kh+='<div class="kpi"><div class="kpi-label">Zile Lucrate</div><div class="kpi-value">'+zileLuc+'</div></div>';
-        kh+='<div class="kpi accent"><div class="kpi-label">Medie / Zi</div><div class="kpi-value">'+fmt(zileLuc>0?totalVal/zileLuc:0)+'</div></div>';
+        kh+='<div class="kpi accent"><div class="kpi-label">Total Monetar</div><div class="kpi-value">'+fmt(totalVal)+'</div><div class="kpi-sub">'+totalBon+' bonuri</div></div>';
+        kh+='<div class="kpi green"><div class="kpi-label">Numerar (Cash)</div><div class="kpi-value">'+fmt(totalCash)+'</div><div class="kpi-sub">'+(totalVal>0?(totalCash/totalVal*100).toFixed(0)+'%':'')+'</div></div>';
+        kh+='<div class="kpi blue"><div class="kpi-label">Card</div><div class="kpi-value">'+fmt(totalCard)+'</div><div class="kpi-sub">'+(totalVal>0?(totalCard/totalVal*100).toFixed(0)+'%':'')+'</div></div>';
+        if(totalVoucher>0) kh+='<div class="kpi"><div class="kpi-label">Tichete/Voucher</div><div class="kpi-value">'+fmt(totalVoucher)+'</div></div>';
+        kh+='<div class="kpi"><div class="kpi-label">Total Discount</div><div class="kpi-value">'+fmt(totalDisc)+'</div></div>';
+        kh+='<div class="kpi"><div class="kpi-label">Medie / Zi</div><div class="kpi-value">'+fmt(zileLuc>0?totalVal/zileLuc:0)+'</div><div class="kpi-sub">'+zileLuc+' zile</div></div>';
         document.getElementById('monetarKpis').innerHTML=kh;
 
-        // Charts
-        var labels=[],vals=[],bons=[];
-        zile.forEach(function(z){labels.push('Zi '+z.zi);vals.push(z.valoare);bons.push(z.nrBonuri);});
-        chartMZ=new Chart(document.getElementById('chartMonetarZile'),{type:'bar',data:{labels:labels,datasets:[{label:'Valoare',data:vals,backgroundColor:'#e85d04',borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
-        chartMB=new Chart(document.getElementById('chartMonetarBonuri'),{type:'bar',data:{labels:labels,datasets:[{label:'Bonuri',data:bons,backgroundColor:'#3b82f6',borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+        // Charts - destroy first to avoid "Canvas already in use" error
+        if(chartMZ){try{chartMZ.destroy();}catch(e){} chartMZ=null;}
+        if(chartMB){try{chartMB.destroy();}catch(e){} chartMB=null;}
+        var labels=[],vals=[],cashArr=[],cardArr=[],bons=[];
+        zile.forEach(function(z){labels.push('Zi '+z.zi);vals.push(z.valoare);cashArr.push(z.cash||0);cardArr.push(z.card||0);bons.push(z.nrBonuri);});
+        try { chartMZ=new Chart(document.getElementById('chartMonetarZile'),{type:'bar',data:{labels:labels,datasets:[{label:'Valoare',data:vals,backgroundColor:'#e85d04',borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}}); } catch(e){}
+        try {
+            var hasCashCard = cashArr.some(function(v){return v>0;}) || cardArr.some(function(v){return v>0;});
+            if(hasCashCard){
+                document.getElementById('titleMonetarBonuri').textContent='Cash vs Card pe Zile';
+                chartMB=new Chart(document.getElementById('chartMonetarBonuri'),{type:'bar',data:{labels:labels,datasets:[{label:'Numerar',data:cashArr,backgroundColor:'#22c55e',borderRadius:4,stack:'s'},{label:'Card',data:cardArr,backgroundColor:'#3b82f6',borderRadius:4,stack:'s'}]},options:{responsive:true,plugins:{legend:{position:'bottom'}},scales:{y:{beginAtZero:true,stacked:true},x:{stacked:true}}}});
+            } else {
+                chartMB=new Chart(document.getElementById('chartMonetarBonuri'),{type:'bar',data:{labels:labels,datasets:[{label:'Bonuri',data:bons,backgroundColor:'#3b82f6',borderRadius:4}]},options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true}}}});
+            }
+        } catch(e){}
 
         renderMonetarTable();
     }
@@ -762,6 +763,9 @@
             renderPag('mPag',tp,mPage,function(p){mPage=p;renderMonetarTable();});
         } else {
             // Pe zile
+            // Pe zile: afisam si cash/card din monetar_zile
+            var zileM=(WINMENTOR_DATA.monetar_zile||[]).filter(function(z){return !lunaM||z.luna===lunaM;});
+            var zileMap={};zileM.forEach(function(z){zileMap[z.zi]={cash:z.cash||0,card:z.card||0,bon:z.nrBonuri||0,val:z.valoare||0};});
             head.innerHTML='<tr><th class="text-center" onclick="sortM(0)">Zi</th><th onclick="sortM(1)">Produs</th><th onclick="sortM(2)">UM</th><th class="text-right" onclick="sortM(3)">Cant</th><th class="text-right" onclick="sortM(4)">Pret</th><th class="text-right" onclick="sortM(5)">Valoare</th><th class="text-right" onclick="sortM(6)">TVA</th><th class="text-right" onclick="sortM(7)">Disc%</th></tr>';
             var f=linii.slice();
             if(q) f=f.filter(function(l){return(l.denumire||'').toLowerCase().indexOf(q)!==-1;});
@@ -778,113 +782,6 @@
             foot.innerHTML='<strong>'+f.length+' linii | Valoare: '+fmt(sv)+' | TVA: '+fmt(st)+'</strong>';
             renderPag('mPag',tp,mPage,function(p){mPage=p;renderMonetarTable();});
         }
-    }
-
-    // =========== BONURI CM ===========
-    var bonuriSort={col:0,asc:false}, bonuriPage=0, bonuriPS=50;
-
-    function setMTab(tab) {
-        var isProduse = (tab === 'produse');
-        document.getElementById('mPanelProduse').style.display = isProduse ? '' : 'none';
-        document.getElementById('mPanelBonuri').style.display = isProduse ? 'none' : '';
-        document.getElementById('mTabProduse').style.borderBottomColor = isProduse ? '#e85d04' : 'transparent';
-        document.getElementById('mTabProduse').style.color = isProduse ? '#e85d04' : '#888';
-        document.getElementById('mTabBonuri').style.borderBottomColor = isProduse ? 'transparent' : '#e85d04';
-        document.getElementById('mTabBonuri').style.color = isProduse ? '#888' : '#e85d04';
-        if (!isProduse) { initBonuriFiltre(); renderBonuriTable(); }
-    }
-
-    function initBonuriFiltre() {
-        var bonuri = WINMENTOR_DATA.bonuri_cm || [];
-        if (!bonuri.length) return;
-        // Seteaza data minima si maxima
-        var dates = bonuri.map(function(b){ return b.data; }).filter(Boolean).sort();
-        var dDe = document.getElementById('bonuriDataDe');
-        var dPana = document.getElementById('bonuriDataPana');
-        if (!dDe.value && dates.length) dDe.value = dates[0];
-        if (!dPana.value && dates.length) dPana.value = dates[dates.length-1];
-    }
-
-    function bonuriResetFiltre() {
-        document.getElementById('bonuriDataDe').value = '';
-        document.getElementById('bonuriDataPana').value = '';
-        document.getElementById('bonuriSearch').value = '';
-        initBonuriFiltre();
-        bonuriPage = 0;
-        renderBonuriTable();
-    }
-
-    function sortBonuri(c) {
-        if (bonuriSort.col===c) bonuriSort.asc=!bonuriSort.asc;
-        else { bonuriSort.col=c; bonuriSort.asc=true; }
-        bonuriPage=0; renderBonuriTable();
-    }
-
-    function renderBonuriTable() {
-        var bonuri = (WINMENTOR_DATA.bonuri_cm || []).slice();
-        var dDe   = document.getElementById('bonuriDataDe').value;
-        var dPana = document.getElementById('bonuriDataPana').value;
-        var q     = (document.getElementById('bonuriSearch').value || '').toLowerCase();
-
-        // Filtrare
-        if (dDe)   bonuri = bonuri.filter(function(b){ return b.data >= dDe; });
-        if (dPana) bonuri = bonuri.filter(function(b){ return b.data <= dPana; });
-        if (q)     bonuri = bonuri.filter(function(b){
-            return (b.nrBon||'').toLowerCase().indexOf(q)!==-1
-                || (b.operator||'').toLowerCase().indexOf(q)!==-1
-                || (b.casaMarcat||'').toLowerCase().indexOf(q)!==-1;
-        });
-
-        // Sortare
-        var cols = ['data','nrBon','valoare','discount','net','operator','casaMarcat'];
-        var numCols = {valoare:1, discount:1, net:1};
-        bonuri.sort(function(a,b){
-            var sc = cols[bonuriSort.col] || 'data';
-            var va = sc==='net' ? (a.valoare - a.discount) : a[sc];
-            var vb = sc==='net' ? (b.valoare - b.discount) : b[sc];
-            if (numCols[sc]) { va=parseFloat(va)||0; vb=parseFloat(vb)||0; return bonuriSort.asc ? va-vb : vb-va; }
-            va=String(va||''); vb=String(vb||'');
-            return bonuriSort.asc ? va.localeCompare(vb,'ro') : vb.localeCompare(va,'ro');
-        });
-
-        // KPIs
-        var totVal=0, totDisc=0, nrBon=bonuri.length;
-        bonuri.forEach(function(b){ totVal+=b.valoare||0; totDisc+=b.discount||0; });
-        var kh='';
-        kh+='<div class="kpi accent"><div class="kpi-label">Total Valoare</div><div class="kpi-value">'+fmt(totVal)+'</div></div>';
-        kh+='<div class="kpi green"><div class="kpi-label">Total Discount</div><div class="kpi-value">'+fmt(totDisc)+'</div></div>';
-        kh+='<div class="kpi blue"><div class="kpi-label">Net (Valoare-Disc)</div><div class="kpi-value">'+fmt(totVal-totDisc)+'</div></div>';
-        kh+='<div class="kpi"><div class="kpi-label">Nr. Bonuri</div><div class="kpi-value">'+nrBon+'</div></div>';
-        kh+='<div class="kpi"><div class="kpi-label">Medie / Bon</div><div class="kpi-value">'+fmt(nrBon>0?(totVal-totDisc)/nrBon:0)+'</div></div>';
-        document.getElementById('bonuriKpis').innerHTML = kh;
-
-        // Paginare
-        var tp=Math.ceil(bonuri.length/bonuriPS)||1;
-        if(bonuriPage>=tp) bonuriPage=tp-1;
-        var page=bonuri.slice(bonuriPage*bonuriPS,(bonuriPage+1)*bonuriPS);
-
-        var h='';
-        page.forEach(function(b){
-            var net=b.valoare-(b.discount||0);
-            var discCell = b.discount>0 ? '<span style="color:#e85d04">-'+fmt(b.discount)+'</span>' : '<span style="color:#9ca3af">-</span>';
-            h+='<tr>';
-            h+='<td>'+b.data+'</td>';
-            h+='<td style="font-weight:600;">'+b.nrBon+'</td>';
-            h+='<td class="text-right">'+fmt(b.valoare)+'</td>';
-            h+='<td class="text-right">'+discCell+'</td>';
-            h+='<td class="text-right" style="font-weight:600;color:#22c55e;">'+fmt(net)+'</td>';
-            h+='<td>'+((b.operator||'').trim()||'-')+'</td>';
-            h+='<td style="color:#888;font-size:11px;">'+b.casaMarcat+'</td>';
-            h+='</tr>';
-        });
-        if (!h) h='<tr><td colspan="7" style="text-align:center;color:#888;padding:20px;">'+
-            (WINMENTOR_DATA.bonuri_cm && WINMENTOR_DATA.bonuri_cm.length ? 'Niciun bon gasit pentru filtrele selectate.' : 'Datele BONCM nu au fost extrase inca. Ruleaza actualizeaza_si_publica.bat.')+
-            '</td></tr>';
-        document.getElementById('bonuriBody').innerHTML = h;
-
-        var foot=document.getElementById('bonuriFoot');
-        foot.innerHTML='<strong>'+bonuri.length+' bonuri | Valoare: '+fmt(totVal)+' | Net: '+fmt(totVal-totDisc)+'</strong>';
-        renderPag('bonuriPag', tp, bonuriPage, function(p){bonuriPage=p; renderBonuriTable();});
     }
 
     // =========== STOCURI ===========

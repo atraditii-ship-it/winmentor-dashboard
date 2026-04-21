@@ -1015,7 +1015,15 @@
             var col5val = scActiveTab==='de_trimis'
                 ? '<span style="color:'+(s.zile_de_la_emitere>60?'#ef4444':'#d97706')+'">'+s.zile_de_la_emitere+' zile</span>'
                 : '<span style="color:#16a34a">'+s.data_reminder+'</span>';
-            h+='<tr><td>'+s.client+'</td><td>'+s.factura+'</td><td>'+s.data_factura+'</td><td>'+s.data_scadenta+'</td><td class="text-right">'+fmt(s.sold_ramas)+'</td><td class="text-right">'+col5val+'</td></tr>';
+            var moneda = s.moneda||'RON';
+            var soldDisplay;
+            if(moneda!=='RON' && s.sold_valuta && s.curs>1){
+                var vVal=(s.sold_valuta||0).toLocaleString('ro-RO',{minimumFractionDigits:2,maximumFractionDigits:2});
+                soldDisplay='<strong>'+vVal+' '+moneda+'</strong><br><small style="color:#9ca3af">'+fmt(s.sold_ramas)+'</small>';
+            } else {
+                soldDisplay=fmt(s.sold_ramas);
+            }
+            h+='<tr><td>'+s.client+'</td><td>'+s.factura+'</td><td>'+s.data_factura+'</td><td>'+s.data_scadenta+'</td><td class="text-right">'+soldDisplay+'</td><td class="text-right">'+col5val+'</td></tr>';
         });
         document.getElementById('scBody').innerHTML=h;
         var sv=0; f.forEach(function(s){sv+=s.sold_ramas||0;});

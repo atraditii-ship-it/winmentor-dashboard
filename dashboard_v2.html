@@ -429,9 +429,28 @@
 
         <div id="scadentar" class="section">
             <div class="kpi-row" id="scadKpis"></div>
+
+            <!-- Sub-taburi De Trimis / Trimise -->
+            <div style="display:flex;gap:0;margin-bottom:16px;border-bottom:2px solid #e5e7eb;">
+                <div id="scTabDeTrimis" onclick="setScTab('de_trimis')" style="padding:8px 20px;cursor:pointer;font-weight:600;font-size:14px;border-bottom:2px solid #2563eb;margin-bottom:-2px;color:#2563eb;">
+                    &#128276; De Trimis <span id="scBadgeDeTrimis" style="background:#ef4444;color:#fff;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px;"></span>
+                </div>
+                <div id="scTabTrimise" onclick="setScTab('trimise')" style="padding:8px 20px;cursor:pointer;font-weight:500;font-size:14px;color:#6b7280;">
+                    &#10003; Trimise <span id="scBadgeTrimise" style="background:#d1d5db;color:#374151;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px;"></span>
+                </div>
+            </div>
+
+            <!-- Buton trimitere (doar in tab De Trimis) -->
+            <div id="scBtnZone" style="margin-bottom:16px;">
+                <button onclick="trimiteRemindere()" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:10px 22px;font-size:14px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:8px;">
+                    &#128231; Trimite Reminder-uri
+                </button>
+                <span id="reminderStatus" style="margin-left:14px;font-size:13px;color:#6b7280;"></span>
+            </div>
+
             <div class="tbl-box">
                 <div class="tbl-header">
-                    <h3>Facturi Restante Clienti</h3>
+                    <h3 id="scTblTitle">Facturi de trimis reminder (peste 31 zile de la emitere)</h3>
                     <input type="text" id="scSearch" class="tbl-search" placeholder="Cauta client..." oninput="renderScadTable()">
                 </div>
                 <table>
@@ -439,10 +458,10 @@
                         <tr>
                             <th onclick="sortSc(0)">Client</th>
                             <th onclick="sortSc(1)">Factura</th>
-                            <th onclick="sortSc(2)">Data</th>
+                            <th onclick="sortSc(2)">Data Emitere</th>
                             <th onclick="sortSc(3)">Scadenta</th>
                             <th class="text-right" onclick="sortSc(4)">Sold Ramas</th>
-                            <th class="text-right" onclick="sortSc(5)">Zile Intarziere</th>
+                            <th class="text-right" onclick="sortSc(5)" id="scCol5Hdr">Zile de la emitere</th>
                         </tr>
                     </thead>
                     <tbody id="scBody"></tbody>
@@ -923,36 +942,83 @@
 
     // =========== SCADENTAR ===========
     var scSort={col:-1,asc:true}, scPage=0, scPS=50;
+    var scActiveTab='de_trimis';
     function sortSc(c){if(scSort.col===c)scSort.asc=!scSort.asc;else{scSort.col=c;scSort.asc=true;}scPage=0;renderScadTable();}
+
+    function setScTab(tab){
+        scActiveTab=tab; scPage=0;
+        var t1=document.getElementById('scTabDeTrimis');
+        var t2=document.getElementById('scTabTrimise');
+        var btn=document.getElementById('scBtnZone');
+        var title=document.getElementById('scTblTitle');
+        var col5=document.getElementById('scCol5Hdr');
+        if(tab==='de_trimis'){
+            t1.style.borderBottom='2px solid #2563eb'; t1.style.color='#2563eb'; t1.style.marginBottom='-2px';
+            t2.style.borderBottom='none'; t2.style.color='#6b7280'; t2.style.marginBottom='0';
+            btn.style.display=''; title.textContent='Facturi de trimis reminder (peste 31 zile de la emitere)';
+            col5.textContent='Zile de la emitere';
+        } else {
+            t2.style.borderBottom='2px solid #16a34a'; t2.style.color='#16a34a'; t2.style.marginBottom='-2px';
+            t1.style.borderBottom='none'; t1.style.color='#6b7280'; t1.style.marginBottom='0';
+            btn.style.display='none'; title.textContent='Facturi la care s-a trimis deja reminder';
+            col5.textContent='Data Reminder';
+        }
+        renderScadTable();
+    }
+
+    function trimiteRemindere(){
+        var all=WINMENTOR_DATA.scadentar_clienti||[];
+        var deTrimis=all.filter(function(s){return !s.reminder_trimis;});
+        var cuEmail=deTrimis.filter(function(s){return s.email&&s.email.indexOf('@')>-1;});
+        var st=document.getElementById('reminderStatus');
+        if(deTrimis.length===0){st.textContent='Nu sunt facturi de trimis.';st.style.color='#6b7280';return;}
+        if(cuEmail.length===0){st.textContent='Niciun client nu are email in WinMentor.';st.style.color='#dc2626';return;}
+        st.textContent='Se deschide scriptul de trimitere...'; st.style.color='#2563eb';
+        window.location.href='winmentor-reminder://send';
+        setTimeout(function(){
+            st.textContent='Script lansat! '+cuEmail.length+' clienti. Reincarca dashboardul dupa trimitere.';
+            st.style.color='#16a34a';
+        },2000);
+    }
 
     function renderScadSection(){
         var data=WINMENTOR_DATA.scadentar_clienti||[];
-        var totalRest=0,nrRest=0,nrIntarz=0;
-        data.forEach(function(s){totalRest+=s.sold_ramas||0;nrRest++;if(s.zile_intarziere>0)nrIntarz++;});
+        var deTrimis=data.filter(function(s){return !s.reminder_trimis;});
+        var trimise=data.filter(function(s){return s.reminder_trimis;});
+        var totalDT=0; deTrimis.forEach(function(s){totalDT+=s.sold_ramas||0;});
+        var totalT=0;  trimise.forEach(function(s){totalT+=s.sold_ramas||0;});
         var kh='';
-        kh+='<div class="kpi red"><div class="kpi-label">Total Restante</div><div class="kpi-value">'+fmt(totalRest)+'</div></div>';
-        kh+='<div class="kpi"><div class="kpi-label">Nr. Facturi</div><div class="kpi-value">'+nrRest+'</div></div>';
-        kh+='<div class="kpi red"><div class="kpi-label">Facturi Intarziate</div><div class="kpi-value">'+nrIntarz+'</div></div>';
+        kh+='<div class="kpi red"><div class="kpi-label">De Trimis Reminder</div><div class="kpi-value">'+deTrimis.length+'</div><div class="kpi-sub">'+fmt(totalDT)+' RON</div></div>';
+        kh+='<div class="kpi"><div class="kpi-label">Reminder Trimis</div><div class="kpi-value">'+trimise.length+'</div><div class="kpi-sub">'+fmt(totalT)+' RON</div></div>';
+        kh+='<div class="kpi"><div class="kpi-label">Total Restante</div><div class="kpi-value">'+fmt(totalDT+totalT)+'</div></div>';
         document.getElementById('scadKpis').innerHTML=kh;
+        // Actualizeaza badge-uri
+        document.getElementById('scBadgeDeTrimis').textContent=deTrimis.length||'';
+        document.getElementById('scBadgeTrimise').textContent=trimise.length||'';
         renderScadTable();
     }
 
     function renderScadTable(){
-        var data=WINMENTOR_DATA.scadentar_clienti||[];
+        var all=WINMENTOR_DATA.scadentar_clienti||[];
+        var data=all.filter(function(s){
+            return scActiveTab==='de_trimis' ? !s.reminder_trimis : s.reminder_trimis;
+        });
         var q=(document.getElementById('scSearch').value||'').toLowerCase();
         var f=data.filter(function(s){return !q||(s.client||'').toLowerCase().indexOf(q)!==-1;});
-        var cols=['client','factura','data_factura','data_scadenta','sold_ramas','zile_intarziere'];
-        var num={sold_ramas:1,zile_intarziere:1};
+        var cols=['client','factura','data_factura','data_scadenta','sold_ramas', scActiveTab==='de_trimis'?'zile_de_la_emitere':'data_reminder'];
+        var num={sold_ramas:1,zile_de_la_emitere:1};
         if(scSort.col>=0){var sc=cols[scSort.col];f.sort(function(a,b){var va=a[sc],vb=b[sc];if(num[sc]){va=parseFloat(va)||0;vb=parseFloat(vb)||0;return scSort.asc?va-vb:vb-va;}va=String(va||'').toLowerCase();vb=String(vb||'').toLowerCase();return scSort.asc?va.localeCompare(vb,'ro'):vb.localeCompare(va,'ro');});}
-        var tp=Math.ceil(f.length/scPS)||1;if(scPage>=tp)scPage=tp-1;
+        var tp=Math.ceil(f.length/scPS)||1; if(scPage>=tp)scPage=tp-1;
         var page=f.slice(scPage*scPS,(scPage+1)*scPS);
         var h='';
         page.forEach(function(s){
-            var cls=s.zile_intarziere>30?' style="color:#ef4444"':'';
-            h+='<tr><td>'+s.client+'</td><td>'+s.factura+'</td><td>'+s.data_factura+'</td><td>'+s.data_scadenta+'</td><td class="text-right">'+fmt(s.sold_ramas)+'</td><td class="text-right"'+cls+'>'+s.zile_intarziere+'</td></tr>';
+            var col5val = scActiveTab==='de_trimis'
+                ? '<span style="color:'+(s.zile_de_la_emitere>60?'#ef4444':'#d97706')+'">'+s.zile_de_la_emitere+' zile</span>'
+                : '<span style="color:#16a34a">'+s.data_reminder+'</span>';
+            h+='<tr><td>'+s.client+'</td><td>'+s.factura+'</td><td>'+s.data_factura+'</td><td>'+s.data_scadenta+'</td><td class="text-right">'+fmt(s.sold_ramas)+'</td><td class="text-right">'+col5val+'</td></tr>';
         });
         document.getElementById('scBody').innerHTML=h;
-        var sv=0;f.forEach(function(s){sv+=s.sold_ramas||0;});
+        var sv=0; f.forEach(function(s){sv+=s.sold_ramas||0;});
         document.getElementById('scFoot').innerHTML='<strong>'+f.length+' facturi | Total: '+fmt(sv)+'</strong>';
         renderPag('scPag',tp,scPage,function(p){scPage=p;renderScadTable();});
     }

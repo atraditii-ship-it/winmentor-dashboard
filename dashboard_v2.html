@@ -1023,7 +1023,12 @@
             } else {
                 soldDisplay=fmt(s.sold_ramas);
             }
-            h+='<tr><td>'+s.client+'</td><td>'+s.factura+'</td><td>'+s.data_factura+'</td><td>'+s.data_scadenta+'</td><td class="text-right">'+soldDisplay+'</td><td class="text-right">'+col5val+'</td></tr>';
+            var clientDisplay = s.email && s.email.indexOf('@')>-1
+                ? s.client
+                : s.client+' <span title="Lipseste emailul in WinMentor" style="color:#ef4444;font-size:11px;cursor:help;">⚠ fara email</span>';
+            h+='<tr'+((!s.email||s.email.indexOf('@')===-1)?' style="background:#fff5f5;"':'')+'>'+
+               '<td>'+clientDisplay+'</td><td>'+s.factura+'</td><td>'+s.data_factura+'</td><td>'+s.data_scadenta+'</td>'+
+               '<td class="text-right">'+soldDisplay+'</td><td class="text-right">'+col5val+'</td></tr>';
         });
         document.getElementById('scBody').innerHTML=h;
         var sv=0; f.forEach(function(s){sv+=s.sold_ramas||0;});

@@ -1079,7 +1079,7 @@
             total_cheltuieli_op:0,ebitda:0,ebit:0,rezultat:0,total:0};
         bl.forEach(function(m){
             if(lunaFilter!=='all'&&m.luna!==parseInt(lunaFilter))return;
-            ch.cifra_afaceri+=m.cifra_afaceri||0;
+            ch.cifra_afaceri+=(m.ca_iesiri||m.cifra_afaceri||0);
             ch.materii_prime+=m.ch_materii_prime||0;
             ch.cost_marfuri+=m.ch_cost_marfuri||0;
             ch.ambalaje+=m.ch_ambalaje||0;

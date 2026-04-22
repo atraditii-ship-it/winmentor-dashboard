@@ -610,7 +610,7 @@
         var caLabels = [], caData = [], caColors = [];
         bl.forEach(function(b) {
             caLabels.push(luniNume[b.luna] || b.luna);
-            caData.push(b.cifra_afaceri || 0);
+            caData.push(b.ca_iesiri || b.cifra_afaceri || 0);
             caColors.push((!isAll && b.luna === selLuna) ? '#e85d04' : (isAll ? '#e85d04' : '#e4e7ec'));
         });
         ovCharts.ca = new Chart(document.getElementById('chartCA'), { type: 'bar', data: { labels: caLabels, datasets: [{ label: 'CA (RON)', data: caData, backgroundColor: caColors, borderRadius: 6 }] }, options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: function(v) { return fmtN(v) } } } } } });

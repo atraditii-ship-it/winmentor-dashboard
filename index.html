@@ -525,11 +525,11 @@
         var caVal = 0, caPrevVal = 0, caLabel = '';
         if (isAll) {
             var lastBl = bl.length > 0 ? bl[bl.length - 1] : {};
-            caVal = lastBl.cifra_afaceri_cumulat || 0;
+            caVal = 0; bl.forEach(function(b){ caVal += (b.ca_iesiri||b.cifra_afaceri||0); });
             caLabel = 'Tot anul';
         } else {
-            bl.forEach(function(b) { if (b.luna === selLuna) caVal = b.cifra_afaceri || 0; });
-            bl.forEach(function(b) { if (b.luna === selLuna - 1) caPrevVal = b.cifra_afaceri || 0; });
+            bl.forEach(function(b) { if (b.luna === selLuna) caVal = (b.ca_iesiri||b.cifra_afaceri||0); });
+            bl.forEach(function(b) { if (b.luna === selLuna - 1) caPrevVal = (b.ca_iesiri||b.cifra_afaceri||0); });
             caLabel = luniNume[selLuna] || '';
         }
         var caChange = caPrevVal > 0 ? ((caVal - caPrevVal) / caPrevVal * 100).toFixed(1) : 0;
@@ -597,7 +597,7 @@
         kh += '</div>';
         if (isAll) {
             var lastBl2 = bl.length > 0 ? bl[bl.length - 1] : {};
-            kh += '<div class="kpi accent"><div class="kpi-label">CA Luna Curenta</div><div class="kpi-value">' + fmt(lastBl2.cifra_afaceri || 0) + '</div><div class="kpi-sub">' + luniNume[curLuna] + '</div></div>';
+            kh += '<div class="kpi accent"><div class="kpi-label">CA Luna Curenta</div><div class="kpi-value">' + fmt(lastBl2.ca_iesiri||lastBl2.cifra_afaceri||0) + '</div><div class="kpi-sub">' + luniNume[curLuna] + '</div></div>';
         }
         kh += '<div class="kpi green"><div class="kpi-label">Cabinet de curiozitati</div><div class="kpi-value">' + fmt(totalMonetar) + '</div><div class="kpi-sub">' + (totalBonuri > 0 ? totalBonuri + ' bonuri' : (isAll && selLuna !== curLuna ? 'date doar luna curenta' : '-')) + '</div></div>';
         kh += '<div class="kpi blue"><div class="kpi-label">Stoc Total</div><div class="kpi-value">' + fmt(stocPF + stocMP + stocAmb) + '</div><div class="kpi-sub">PF+Marfuri: ' + fmt(stocPF) + '</div></div>';
@@ -610,7 +610,7 @@
         var caLabels = [], caData = [], caColors = [];
         bl.forEach(function(b) {
             caLabels.push(luniNume[b.luna] || b.luna);
-            caData.push(b.cifra_afaceri || 0);
+            caData.push(b.ca_iesiri || b.cifra_afaceri || 0);
             caColors.push((!isAll && b.luna === selLuna) ? '#e85d04' : (isAll ? '#e85d04' : '#e4e7ec'));
         });
         ovCharts.ca = new Chart(document.getElementById('chartCA'), { type: 'bar', data: { labels: caLabels, datasets: [{ label: 'CA (RON)', data: caData, backgroundColor: caColors, borderRadius: 6 }] }, options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { callback: function(v) { return fmtN(v) } } } } } });
@@ -1023,7 +1023,12 @@
             } else {
                 soldDisplay=fmt(s.sold_ramas);
             }
-            h+='<tr><td>'+s.client+'</td><td>'+s.factura+'</td><td>'+s.data_factura+'</td><td>'+s.data_scadenta+'</td><td class="text-right">'+soldDisplay+'</td><td class="text-right">'+col5val+'</td></tr>';
+            var clientDisplay = s.email && s.email.indexOf('@')>-1
+                ? s.client
+                : s.client+' <span title="Lipseste emailul in WinMentor" style="color:#ef4444;font-size:11px;cursor:help;">⚠ fara email</span>';
+            h+='<tr'+((!s.email||s.email.indexOf('@')===-1)?' style="background:#fff5f5;"':'')+'>'+
+               '<td>'+clientDisplay+'</td><td>'+s.factura+'</td><td>'+s.data_factura+'</td><td>'+s.data_scadenta+'</td>'+
+               '<td class="text-right">'+soldDisplay+'</td><td class="text-right">'+col5val+'</td></tr>';
         });
         document.getElementById('scBody').innerHTML=h;
         var sv=0; f.forEach(function(s){sv+=s.sold_ramas||0;});
@@ -1074,7 +1079,7 @@
             total_cheltuieli_op:0,ebitda:0,ebit:0,rezultat:0,total:0};
         bl.forEach(function(m){
             if(lunaFilter!=='all'&&m.luna!==parseInt(lunaFilter))return;
-            ch.cifra_afaceri+=m.cifra_afaceri||0;
+            ch.cifra_afaceri+=(m.ca_iesiri||m.cifra_afaceri||0);
             ch.materii_prime+=m.ch_materii_prime||0;
             ch.cost_marfuri+=m.ch_cost_marfuri||0;
             ch.ambalaje+=m.ch_ambalaje||0;
